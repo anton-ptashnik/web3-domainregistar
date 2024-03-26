@@ -6,17 +6,20 @@ pragma solidity ^0.8.24;
 
 contract DomainRegistar {
     address public owner;
-    uint public domainPrice;
+    uint8 public domainPrice;
 
     event DomainRegistration(address indexed _owner, address owner, string domain);
+    event PriceChange(uint8 newPrice, uint8 oldPrice);
 
-    constructor(uint _domainPrice) {
+    constructor(uint8 _domainPrice) {
         owner = msg.sender;
         domainPrice = _domainPrice;
     }
 
-    function updateDomainPrice(uint newPrice) public {
-        
+    function updateDomainPrice(uint8 newPrice) public {
+        require(msg.sender == owner);
+        emit PriceChange(newPrice, domainPrice);
+        domainPrice = newPrice;
     }
 
     function registerDomain(string calldata domain) public {

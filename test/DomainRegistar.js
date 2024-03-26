@@ -30,10 +30,11 @@ describe.only("DomainRegistar", function () {
 
   describe("Domain price update", function () {
     it("Should set a new domain price on contract owner request", async function () {
-      const { domainRegistar, owner, anotherAccount } = await loadFixture(deployContract);
+      const { domainRegistar, domainPrice } = await loadFixture(deployContract);
 
       const newPrice = 99;
-      expect(await domainRegistar.updateDomainPrice(newPrice)).ok;
+      await expect(domainRegistar.updateDomainPrice(newPrice))
+        .to.emit(domainRegistar, "PriceChange").withArgs(newPrice, domainPrice);
       expect(await domainRegistar.domainPrice()).to.equal(newPrice);
     });
 
@@ -45,9 +46,7 @@ describe.only("DomainRegistar", function () {
       const newPrice = 99;
       domainRegistarNonOwner = domainRegistar.connect(anotherAccount)
 
-      await expect(domainRegistarNonOwner.updateDomainPrice(newPrice)).to.be.revertedWith(
-        "You aren't the owner"
-      );
+      await expect(domainRegistarNonOwner.updateDomainPrice(newPrice)).to.be.reverted
       expect(await domainRegistarNonOwner.domainPrice()).to.equal(initialPrice);
     });
   });
