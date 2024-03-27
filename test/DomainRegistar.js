@@ -46,7 +46,8 @@ describe.only("DomainRegistar", function () {
       const newPrice = 99;
       domainRegistarNonOwner = domainRegistar.connect(anotherAccount)
 
-      await expect(domainRegistarNonOwner.updateDomainPrice(newPrice)).to.be.reverted
+      await expect(domainRegistarNonOwner.updateDomainPrice(newPrice))
+        .to.be.revertedWithCustomError(domainRegistar, "AccessDenied");
       expect(await domainRegistarNonOwner.domainPrice()).to.equal(initialPrice);
     });
   });
@@ -78,8 +79,10 @@ describe.only("DomainRegistar", function () {
         .to.emit(domainRegistar, "DomainRegistration")
         .withArgs(anyValue, owner.address, domainName);
 
-      await expect(domainRegistar.registerDomain(domainName, coinsMap)).to.be.reverted
-      await expect(anotherDomainRegistar.registerDomain(domainName, coinsMap)).to.be.reverted
+      await expect(domainRegistar.registerDomain(domainName, coinsMap))
+        .to.be.revertedWithCustomError(domainRegistar, "DuplicateDomain");
+      await expect(anotherDomainRegistar.registerDomain(domainName, coinsMap))
+        .to.be.revertedWithCustomError(domainRegistar, "DuplicateDomain");
     });
   });
 });

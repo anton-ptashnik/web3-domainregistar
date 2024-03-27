@@ -4,6 +4,10 @@ pragma solidity ^0.8.24;
 // Uncomment this line to use console.log
 // import "hardhat/console.sol";
 
+error AccessDenied(string description);
+error NotEnoughFunds(uint8 provided, uint8 required);
+error DuplicateDomain();
+
 contract DomainRegistar {
     address public owner;
     uint8 public domainPrice;
@@ -19,14 +23,20 @@ contract DomainRegistar {
     }
 
     function updateDomainPrice(uint8 newPrice) public {
-        require(msg.sender == owner);
+        if(msg.sender != owner) {
+            revert AccessDenied("Domain price can be changed by owner only");
+        }
         emit PriceChange(newPrice, domainPrice);
         domainPrice = newPrice;
     }
 
     function registerDomain(string calldata domain) public payable {
-        require(msg.value == domainPrice);
-        require(isNewDomain(domain));
+        if(msg.value != domainPrice) {
+            revert NotEnoughFunds(uint8(msg.value), domainPrice);
+        }
+        if(!isNewDomain(domain)) {
+            revert DuplicateDomain();
+        }
 
         uint16 domainIndex = uint16(domains.length);
         domains.push(domain);
