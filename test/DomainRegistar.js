@@ -53,31 +53,33 @@ describe.only("DomainRegistar", function () {
 
   describe("Domain registration", function () {
     it("Should allow domain registration for different users", async function () {
-      const { domainRegistar, owner, anotherAccount } = await loadFixture(deployContract);
+      const { domainRegistar, domainPrice, owner, anotherAccount } = await loadFixture(deployContract);
 
       const domainName = "hidomain";
-      await expect(domainRegistar.registerDomain(domainName))
+      coinsMap = {value: domainPrice}
+      await expect(domainRegistar.registerDomain(domainName, coinsMap))
         .to.emit(domainRegistar, "DomainRegistration")
         .withArgs(anyValue, owner.address, domainName);
 
       const anotherDomainName = "hidomain2";
       anotherDomainRegistar = domainRegistar.connect(anotherAccount)
-      await expect(anotherDomainRegistar.registerDomain(anotherDomainName))
+      await expect(anotherDomainRegistar.registerDomain(anotherDomainName, coinsMap))
         .to.emit(anotherDomainRegistar, "DomainRegistration")
         .withArgs(anyValue, anotherAccount.address, anotherDomainName);
     });
 
     it("Should refuse same domain registration", async function () {
-      const { domainRegistar, owner, anotherAccount } = await loadFixture(deployContract);
+      const { domainRegistar, domainPrice, owner, anotherAccount } = await loadFixture(deployContract);
       const domainName = "hidomain";
       anotherDomainRegistar = domainRegistar.connect(anotherAccount)
+      coinsMap = {value: domainPrice}
 
-      await expect(domainRegistar.registerDomain(domainName))
+      await expect(domainRegistar.registerDomain(domainName, coinsMap))
         .to.emit(domainRegistar, "DomainRegistration")
         .withArgs(anyValue, owner.address, domainName);
 
-      await expect(domainRegistar.registerDomain(domainName)).to.be.reverted
-      await expect(anotherDomainRegistar.registerDomain(domainName)).to.be.reverted
+      await expect(domainRegistar.registerDomain(domainName, coinsMap)).to.be.reverted
+      await expect(anotherDomainRegistar.registerDomain(domainName, coinsMap)).to.be.reverted
     });
   });
 });

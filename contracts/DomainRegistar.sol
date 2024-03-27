@@ -24,7 +24,8 @@ contract DomainRegistar {
         domainPrice = newPrice;
     }
 
-    function registerDomain(string calldata domain) public {
+    function registerDomain(string calldata domain) public payable {
+        require(msg.value == domainPrice);
         require(isNewDomain(domain));
 
         uint16 domainIndex = uint16(domains.length);
