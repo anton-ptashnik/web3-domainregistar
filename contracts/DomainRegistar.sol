@@ -7,6 +7,8 @@ pragma solidity ^0.8.24;
 contract DomainRegistar {
     address public owner;
     uint8 public domainPrice;
+    string[] private domains;
+    mapping (address => uint16[]) private ownerDomainsByIndex;
 
     event DomainRegistration(address indexed _owner, address owner, string domain);
     event PriceChange(uint8 newPrice, uint8 oldPrice);
@@ -23,6 +25,21 @@ contract DomainRegistar {
     }
 
     function registerDomain(string calldata domain) public {
+        require(isNewDomain(domain));
 
+        uint16 domainIndex = uint16(domains.length);
+        domains.push(domain);
+        ownerDomainsByIndex[msg.sender].push(domainIndex);
+        emit DomainRegistration(msg.sender, msg.sender, domain);
+    }
+
+    function isNewDomain(string memory domain) private view returns (bool) {
+        bytes32 baseHash = keccak256(abi.encodePacked(domain));
+        for (uint i = 0; i < domains.length; i++) {
+            if (keccak256(abi.encodePacked(domains[i])) == baseHash) {
+                return false;
+            }
+        }
+        return true;
     }
 }
