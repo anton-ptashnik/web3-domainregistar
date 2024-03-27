@@ -31,7 +31,7 @@ contract DomainRegistar {
     }
 
     function registerDomain(string calldata domain) public payable {
-        if(msg.value != domainPrice) {
+        if(msg.value < domainPrice) {
             revert NotEnoughFunds(uint8(msg.value), domainPrice);
         }
         if(!isNewDomain(domain)) {

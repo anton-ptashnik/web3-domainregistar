@@ -84,5 +84,12 @@ describe.only("DomainRegistar", function () {
       await expect(anotherDomainRegistar.registerDomain(domainName, coinsMap))
         .to.be.revertedWithCustomError(domainRegistar, "DuplicateDomain");
     });
+
+    it("Should refuse domain registration when not enough coins provided", async function () {
+      const { domainRegistar, domainPrice} = await loadFixture(deployContract);
+
+      await expect(domainRegistar.registerDomain("hidomain", {value: domainPrice-1}))
+        .to.revertedWithCustomError(domainRegistar, "NotEnoughFunds");
+    });
   });
 });
