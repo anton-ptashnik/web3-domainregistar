@@ -8,12 +8,38 @@ const { ethers } = require("hardhat");
 
 describe.only("DomainRegistar", function () {
   async function deployContract() {
-    const [owner, anotherAccount] = await ethers.getSigners();
+    const [owner, anotherAccount, ...otherAccounts] = await ethers.getSigners();
     const factory = await ethers.getContractFactory("DomainRegistar");
     const domainPrice = 6;
 
     const domainRegistar = await factory.deploy(domainPrice);
-    return { domainRegistar, domainPrice, owner, anotherAccount};
+    return { domainRegistar, domainPrice, owner, anotherAccount, otherAccounts};
+  }
+
+  async function deployContractWithData() {
+    const deploymentData = await loadFixture(deployContract);
+
+    let owners = deploymentData.otherAccounts.slice(0, 5)
+    let domains = [...Array(50).keys()].map(i => "dom"+i);
+    const domainsPerOwner = 5;
+    let domainsByOwners = new Map();
+    let ownersByAddress = new Map();
+    for (let owner of owners) {
+      domainsByOwners.set(owner.address, domains.slice(0, domainsPerOwner));
+      domains.splice(0, domainsPerOwner);
+      ownersByAddress.set(owner.address, owner);
+    }
+
+    for (let [ownerAddress, domains] of domainsByOwners) {
+      const owner = ownersByAddress.get(ownerAddress);
+      let contract = deploymentData.domainRegistar.connect(owner);
+      for(let domainName of domains) {
+        // await contract.registerDomain(domainName, {value: deploymentData.domainPrice})
+        await expect(contract.registerDomain(domainName, {value: deploymentData.domainPrice}))
+          .to.emit(deploymentData.domainRegistar, "DomainRegistration");
+      }
+    }
+    return { ...deploymentData, domainsByOwners};
   }
 
   describe("Deployment", function () {
@@ -90,6 +116,31 @@ describe.only("DomainRegistar", function () {
 
       await expect(domainRegistar.registerDomain("hidomain", {value: domainPrice-1}))
         .to.revertedWithCustomError(domainRegistar, "NotEnoughFunds");
+    });
+  });
+
+  describe("Metrics query demo", function () {
+    it("Should return event logs when requested", async function () {
+      const { domainRegistar, domainsByOwners } = await loadFixture(deployContractWithData);
+      console.log("Domains list per owner");
+      for (let [ownerAddress, expDomainsOrdered] of domainsByOwners) {
+        const filterByOwner = domainRegistar.filters.DomainRegistration(ownerAddress);
+        const logs = await domainRegistar.queryFilter(filterByOwner, 0, "latest");
+        const actDomains = logs.map(log => log.args.domain);
+        expect(actDomains).to.include.ordered.members(expDomainsOrdered);
+        console.log(`${ownerAddress} domains: ${actDomains}`);
+      }
+      
+      console.log("All domains list");
+      let allDomains = [];
+      for (let [_owner, domains] of domainsByOwners) {
+        allDomains.push(...domains);
+      }
+      const filterByRegEvent = domainRegistar.filters.DomainRegistration();
+      const logs = await domainRegistar.queryFilter(filterByRegEvent, 0, "latest");
+      const actDomains = logs.map(log => log.args.domain);
+      expect(actDomains).to.include.ordered.members(allDomains);
+      console.log(`All domains: ${allDomains}`);
     });
   });
 });
