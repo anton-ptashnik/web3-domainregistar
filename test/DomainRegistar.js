@@ -1,5 +1,4 @@
 const {
-  time,
   loadFixture,
 } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
 const { anyValue } = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
@@ -8,37 +7,32 @@ const { ethers } = require("hardhat");
 
 describe.only("DomainRegistar", function () {
   async function deployContract() {
-    const [owner, anotherAccount, ...otherAccounts] = await ethers.getSigners();
+    const [owner, ...otherAccounts] = await ethers.getSigners();
     const factory = await ethers.getContractFactory("DomainRegistar");
-    const domainPrice = 6;
+    const initialDomainPrice = 6;
 
-    const domainRegistar = await factory.deploy(domainPrice);
-    return { domainRegistar, domainPrice, owner, anotherAccount, otherAccounts};
+    const domainRegistar = await factory.deploy(initialDomainPrice);
+    return { domainRegistar, initialDomainPrice, owner, otherAccounts};
   }
 
   async function deployContractWithData() {
     const deploymentData = await loadFixture(deployContract);
 
-    let owners = deploymentData.otherAccounts.slice(0, 5)
-    let domains = [...Array(50).keys()].map(i => "dom"+i);
+    let domainOwners = deploymentData.otherAccounts.slice(0, 5)
     const domainsPerOwner = 5;
+    let domains = [...Array(domainsPerOwner*domainOwners.length).keys()].map(i => "dom"+i);
     let domainsByOwners = new Map();
-    let ownersByAddress = new Map();
-    for (let owner of owners) {
-      domainsByOwners.set(owner.address, domains.slice(0, domainsPerOwner));
+    for (let owner of domainOwners) {
+      const ownerDomains = domains.slice(0, domainsPerOwner)
       domains.splice(0, domainsPerOwner);
-      ownersByAddress.set(owner.address, owner);
-    }
+      domainsByOwners.set(owner.address, ownerDomains);
 
-    for (let [ownerAddress, domains] of domainsByOwners) {
-      const owner = ownersByAddress.get(ownerAddress);
-      let contract = deploymentData.domainRegistar.connect(owner);
-      for(let domainName of domains) {
-        // await contract.registerDomain(domainName, {value: deploymentData.domainPrice})
-        await expect(contract.registerDomain(domainName, {value: deploymentData.domainPrice}))
-          .to.emit(deploymentData.domainRegistar, "DomainRegistration");
+      const contract = deploymentData.domainRegistar.connect(owner);
+      for(let domainName of ownerDomains) {
+        await contract.registerDomain(domainName, {value: deploymentData.initialDomainPrice});
       }
     }
+
     return { ...deploymentData, domainsByOwners};
   }
 
@@ -56,50 +50,50 @@ describe.only("DomainRegistar", function () {
 
   describe("Domain price update", function () {
     it("Should set a new domain price on contract owner request", async function () {
-      const { domainRegistar, domainPrice } = await loadFixture(deployContract);
+      const { domainRegistar, initialDomainPrice } = await loadFixture(deployContract);
 
       const newPrice = 99;
       await expect(domainRegistar.updateDomainPrice(newPrice))
-        .to.emit(domainRegistar, "PriceChange").withArgs(newPrice, domainPrice);
+        .to.emit(domainRegistar, "PriceChange").withArgs(newPrice, initialDomainPrice);
       expect(await domainRegistar.domainPrice()).to.equal(newPrice);
     });
 
     it("Should refuse domain price update for non-owners", async function () {
-      const { domainRegistar, domainPrice, anotherAccount } = await loadFixture(
+      const { domainRegistar, initialDomainPrice, otherAccounts } = await loadFixture(
         deployContract
       );
-      const initialPrice = domainPrice;
       const newPrice = 99;
-      domainRegistarNonOwner = domainRegistar.connect(anotherAccount)
+      const domainRegistarNonOwner = domainRegistar.connect(otherAccounts[0]);
 
       await expect(domainRegistarNonOwner.updateDomainPrice(newPrice))
         .to.be.revertedWithCustomError(domainRegistar, "AccessDenied");
-      expect(await domainRegistarNonOwner.domainPrice()).to.equal(initialPrice);
+      expect(await domainRegistarNonOwner.domainPrice()).to.equal(initialDomainPrice);
     });
   });
 
   describe("Domain registration", function () {
     it("Should allow domain registration for different users", async function () {
-      const { domainRegistar, domainPrice, owner, anotherAccount } = await loadFixture(deployContract);
+      const { domainRegistar, initialDomainPrice, owner, otherAccounts } = await loadFixture(deployContract);
 
       const domainName = "hidomain";
-      coinsMap = {value: domainPrice}
+      const anotherAccount = otherAccounts[0];
+      const coinsMap = {value: initialDomainPrice}
       await expect(domainRegistar.registerDomain(domainName, coinsMap))
         .to.emit(domainRegistar, "DomainRegistration")
         .withArgs(anyValue, owner.address, domainName);
 
       const anotherDomainName = "hidomain2";
-      anotherDomainRegistar = domainRegistar.connect(anotherAccount)
+      const anotherDomainRegistar = domainRegistar.connect(anotherAccount)
       await expect(anotherDomainRegistar.registerDomain(anotherDomainName, coinsMap))
         .to.emit(anotherDomainRegistar, "DomainRegistration")
         .withArgs(anyValue, anotherAccount.address, anotherDomainName);
     });
 
     it("Should refuse same domain registration", async function () {
-      const { domainRegistar, domainPrice, owner, anotherAccount } = await loadFixture(deployContract);
+      const { domainRegistar, initialDomainPrice, owner, otherAccounts } = await loadFixture(deployContract);
       const domainName = "hidomain";
-      anotherDomainRegistar = domainRegistar.connect(anotherAccount)
-      coinsMap = {value: domainPrice}
+      const anotherDomainRegistar = domainRegistar.connect(otherAccounts[0])
+      const coinsMap = {value: initialDomainPrice}
 
       await expect(domainRegistar.registerDomain(domainName, coinsMap))
         .to.emit(domainRegistar, "DomainRegistration")
@@ -112,9 +106,9 @@ describe.only("DomainRegistar", function () {
     });
 
     it("Should refuse domain registration when not enough coins provided", async function () {
-      const { domainRegistar, domainPrice} = await loadFixture(deployContract);
+      const { domainRegistar, initialDomainPrice} = await loadFixture(deployContract);
 
-      await expect(domainRegistar.registerDomain("hidomain", {value: domainPrice-1}))
+      await expect(domainRegistar.registerDomain("hidomain", {value: initialDomainPrice-1}))
         .to.revertedWithCustomError(domainRegistar, "NotEnoughFunds");
     });
   });
