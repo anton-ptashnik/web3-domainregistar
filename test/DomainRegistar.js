@@ -111,6 +111,14 @@ describe.only("DomainRegistar", function () {
       await expect(domainRegistar.registerDomain("hidomain", {value: initialDomainPrice-1}))
         .to.revertedWithCustomError(domainRegistar, "NotEnoughFunds");
     });
+
+    it("Should refuse registration of nested domains", async function () {
+      const { domainRegistar, initialDomainPrice } = await loadFixture(deployContract);
+      const domainName = "sub.domain";
+      await expect(domainRegistar.registerDomain(domainName, {value: initialDomainPrice}))
+        .to.be.revertedWithCustomError(domainRegistar, "TopLevelDomainsOnly");
+
+    });
   });
 
   describe("Metrics query demo", function () {
