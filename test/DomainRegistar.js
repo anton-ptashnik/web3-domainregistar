@@ -44,7 +44,7 @@ describe.only("DomainRegistar", function () {
       const domainRegistar = await factory.deploy(domainPrice);
 
       expect(await domainRegistar.owner()).to.equal(owner.address);
-      expect(await domainRegistar.domainPrice()).to.equal(domainPrice);
+      expect(await domainRegistar.weiDomainPrice()).to.equal(domainPrice);
     });
   });
 
@@ -55,7 +55,7 @@ describe.only("DomainRegistar", function () {
       const newPrice = 99;
       await expect(domainRegistar.updateDomainPrice(newPrice))
         .to.emit(domainRegistar, "PriceChange").withArgs(newPrice, initialDomainPrice);
-      expect(await domainRegistar.domainPrice()).to.equal(newPrice);
+      expect(await domainRegistar.weiDomainPrice()).to.equal(newPrice);
     });
 
     it("Should refuse domain price update for non-owners", async function () {
@@ -67,7 +67,7 @@ describe.only("DomainRegistar", function () {
 
       await expect(domainRegistarNonOwner.updateDomainPrice(newPrice))
         .to.be.revertedWithCustomError(domainRegistar, "AccessDenied");
-      expect(await domainRegistarNonOwner.domainPrice()).to.equal(initialDomainPrice);
+      expect(await domainRegistarNonOwner.weiDomainPrice()).to.equal(initialDomainPrice);
     });
   });
 
