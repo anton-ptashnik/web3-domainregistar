@@ -3,6 +3,8 @@ pragma solidity ^0.8.24;
 
 // Uncomment this line to use console.log
 // import "hardhat/console.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+
 
 error AccessDenied(string description);
 error NotEnoughFunds(uint provided, uint required);
@@ -13,15 +15,16 @@ error TopLevelDomainsOnly();
  * @title A simple contract for top-level domain registration
  * @author Me
  */
-contract DomainRegistar {
+contract DomainRegistar is Initializable {
     /// @notice Address of the account that deployed the contract
     address payable public owner;
 
     /// @notice Price payed for domain registration
     uint public weiDomainPrice;
-
+    
     mapping(address => string[]) private _domains;
     mapping(string => bool) private _exists;
+
     /**
      * Emitted on domain registration
      * @param _owner domain owner
@@ -37,7 +40,7 @@ contract DomainRegistar {
      */
     event PriceChanged(uint newPrice, uint oldPrice);
 
-    constructor(uint _domainPrice) {
+    function initialize(uint _domainPrice) public initializer {
         owner = payable(msg.sender);
         weiDomainPrice = _domainPrice;
     }
