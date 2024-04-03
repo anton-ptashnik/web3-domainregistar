@@ -28,14 +28,14 @@ contract DomainRegistar {
      * @param owner domain owner
      * @param domain name of a new domain 
      */
-    event DomainRegistration(address indexed _owner, address owner, string domain);
+    event DomainRegistered(address indexed _owner, address owner, string domain);
 
     /**
      * Emitted on price change
      * @param newPrice new price in Wei
      * @param oldPrice old price in Wei
      */
-    event PriceChange(uint newPrice, uint oldPrice);
+    event PriceChanged(uint newPrice, uint oldPrice);
 
     constructor(uint _domainPrice) {
         owner = payable(msg.sender);
@@ -50,7 +50,7 @@ contract DomainRegistar {
         if(msg.sender != owner) {
             revert AccessDenied("Domain price can be changed by owner only");
         }
-        emit PriceChange(newPrice, weiDomainPrice);
+        emit PriceChanged(newPrice, weiDomainPrice);
         weiDomainPrice = newPrice;
     }
 
@@ -71,7 +71,7 @@ contract DomainRegistar {
 
         _exists[domain] = true;
         _domains[msg.sender].push(domain);
-        emit DomainRegistration(msg.sender, msg.sender, domain);
+        emit DomainRegistered(msg.sender, msg.sender, domain);
     }
 
     /**

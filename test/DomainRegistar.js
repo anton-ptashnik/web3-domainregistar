@@ -53,7 +53,7 @@ describe.only("DomainRegistar", function () {
 
       const newPrice = 99;
       await expect(domainRegistar.updateDomainPrice(newPrice))
-        .to.emit(domainRegistar, "PriceChange").withArgs(newPrice, initialDomainPrice);
+        .to.emit(domainRegistar, "PriceChanged").withArgs(newPrice, initialDomainPrice);
       expect(await domainRegistar.weiDomainPrice()).to.equal(newPrice);
     });
 
@@ -78,13 +78,13 @@ describe.only("DomainRegistar", function () {
       const anotherAccount = otherAccounts[0];
       const coinsMap = {value: initialDomainPrice}
       await expect(domainRegistar.registerDomain(domainName, coinsMap))
-        .to.emit(domainRegistar, "DomainRegistration")
+        .to.emit(domainRegistar, "DomainRegistered")
         .withArgs(anyValue, owner.address, domainName);
 
       const anotherDomainName = "hidomain2";
       const anotherDomainRegistar = domainRegistar.connect(anotherAccount)
       await expect(anotherDomainRegistar.registerDomain(anotherDomainName, coinsMap))
-        .to.emit(anotherDomainRegistar, "DomainRegistration")
+        .to.emit(anotherDomainRegistar, "DomainRegistered")
         .withArgs(anyValue, anotherAccount.address, anotherDomainName);
     });
 
@@ -95,7 +95,7 @@ describe.only("DomainRegistar", function () {
       const coinsMap = {value: initialDomainPrice}
 
       await expect(domainRegistar.registerDomain(domainName, coinsMap))
-        .to.emit(domainRegistar, "DomainRegistration")
+        .to.emit(domainRegistar, "DomainRegistered")
         .withArgs(anyValue, owner.address, domainName);
 
       await expect(domainRegistar.registerDomain(domainName, coinsMap))
@@ -162,7 +162,7 @@ describe.only("DomainRegistar", function () {
       const { domainRegistar, domainsByOwners } = await loadFixture(deployContractWithData);
       console.log("Domains list per owner");
       for (let [ownerAddress, expDomainsOrdered] of domainsByOwners) {
-        const filterByOwner = domainRegistar.filters.DomainRegistration(ownerAddress);
+        const filterByOwner = domainRegistar.filters.DomainRegistered(ownerAddress);
         const logs = await domainRegistar.queryFilter(filterByOwner, 0, "latest");
         const actDomains = logs.map(log => log.args.domain);
         expect(actDomains).to.include.ordered.members(expDomainsOrdered);
@@ -174,7 +174,7 @@ describe.only("DomainRegistar", function () {
       for (let [_owner, domains] of domainsByOwners) {
         allDomains.push(...domains);
       }
-      const filterByRegEvent = domainRegistar.filters.DomainRegistration();
+      const filterByRegEvent = domainRegistar.filters.DomainRegistered();
       const logs = await domainRegistar.queryFilter(filterByRegEvent, 0, "latest");
       const actDomains = logs.map(log => log.args.domain);
       expect(actDomains).to.include.ordered.members(allDomains);
