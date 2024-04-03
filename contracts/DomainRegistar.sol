@@ -15,7 +15,7 @@ error TopLevelDomainsOnly();
  */
 contract DomainRegistar {
     /// @notice Address of the account that deployed the contract
-    address public owner;
+    address payable public owner;
 
     /// @notice Price payed for domain registration
     uint public weiDomainPrice;
@@ -38,7 +38,7 @@ contract DomainRegistar {
     event PriceChange(uint newPrice, uint oldPrice);
 
     constructor(uint _domainPrice) {
-        owner = msg.sender;
+        owner = payable(msg.sender);
         weiDomainPrice = _domainPrice;
     }
 
@@ -73,6 +73,16 @@ contract DomainRegistar {
         _domains.push(domain);
         _ownerDomainsByIndex[msg.sender].push(domainIndex);
         emit DomainRegistration(msg.sender, msg.sender, domain);
+    }
+
+    /**
+     * Send all coins to the owner. Allowed for the owner only
+     */
+    function withdraw() public {
+        if(msg.sender != owner) {
+            revert AccessDenied("Only owner can request balance withdrawal");
+        }
+        owner.transfer(address(this).balance);
     }
 
     function _isNewDomain(string memory domain) private view returns (bool) {

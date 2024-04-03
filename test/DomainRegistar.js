@@ -6,10 +6,9 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
 describe.only("DomainRegistar", function () {
-  async function deployContract() {
+  async function deployContract(initialDomainPrice = 6) {
     const [owner, ...otherAccounts] = await ethers.getSigners();
-    const factory = await ethers.getContractFactory("DomainRegistar");
-    const initialDomainPrice = 6;
+    const factory = await ethers.getContractFactory("DomainRegistar", owner);
 
     const domainRegistar = await factory.deploy(initialDomainPrice);
     return { domainRegistar, initialDomainPrice, owner, otherAccounts};
@@ -118,6 +117,31 @@ describe.only("DomainRegistar", function () {
       await expect(domainRegistar.registerDomain(domainName, {value: initialDomainPrice}))
         .to.be.revertedWithCustomError(domainRegistar, "TopLevelDomainsOnly");
 
+    });
+  });
+
+  describe("Coin withdrawal", function () {
+    it("Should send all coins to the owner when requested", async function () {
+      const domainPrice = 5000;
+      const {owner, domainRegistar, otherAccounts} = await deployContract(domainPrice);
+
+      const domainRegistarAnotherAccount = domainRegistar.connect(otherAccounts[0]);
+      await domainRegistarAnotherAccount.registerDomain("hidomain", {value: domainPrice});
+      
+      await expect(domainRegistar.withdraw())
+        .to.changeEtherBalances([domainRegistar, owner], [-domainPrice, domainPrice]);
+    });
+
+    it("Should resctict coin withdrawal to an owner only", async function () {
+      const domainPrice = 5000;
+      const {domainRegistar, otherAccounts} = await deployContract(domainPrice);
+
+      const domainRegistarAccount = domainRegistar.connect(otherAccounts[0]);
+      const nonOwnerAccount = domainRegistar.connect(otherAccounts[1]);
+      await domainRegistarAccount.registerDomain("hidomain", {value: domainPrice});
+      
+      await expect(nonOwnerAccount.withdraw())
+        .to.be.revertedWithCustomError(domainRegistar, "AccessDenied");
     });
   });
 
