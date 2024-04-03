@@ -20,8 +20,8 @@ contract DomainRegistar {
     /// @notice Price payed for domain registration
     uint public weiDomainPrice;
 
-    string[] private _domains;
-    mapping (address => uint16[]) private _ownerDomainsByIndex;
+    mapping(address => string[]) private _domains;
+    mapping(string => bool) private _exists;
     /**
      * Emitted on domain registration
      * @param _owner domain owner
@@ -69,9 +69,8 @@ contract DomainRegistar {
             revert DuplicateDomain();
         }
 
-        uint16 domainIndex = uint16(_domains.length);
-        _domains.push(domain);
-        _ownerDomainsByIndex[msg.sender].push(domainIndex);
+        _exists[domain] = true;
+        _domains[msg.sender].push(domain);
         emit DomainRegistration(msg.sender, msg.sender, domain);
     }
 
@@ -86,13 +85,7 @@ contract DomainRegistar {
     }
 
     function _isNewDomain(string memory domain) private view returns (bool) {
-        bytes32 baseHash = keccak256(abi.encodePacked(domain));
-        for (uint i = 0; i < _domains.length; i++) {
-            if (keccak256(abi.encodePacked(_domains[i])) == baseHash) {
-                return false;
-            }
-        }
-        return true;
+        return !_exists[domain];
     }
 
     function _isTopLevelDomain(string memory domain) private pure returns (bool) {

@@ -116,7 +116,19 @@ describe.only("DomainRegistar", function () {
       const domainName = "sub.domain";
       await expect(domainRegistar.registerDomain(domainName, {value: initialDomainPrice}))
         .to.be.revertedWithCustomError(domainRegistar, "TopLevelDomainsOnly");
+    });
 
+    it.skip("Should scale", async function () {
+      this.timeout(120000);
+      const { domainRegistar, initialDomainPrice, owner } = await loadFixture(deployContract);
+      const domainsCount = 1000;
+      let domains = [...Array(domainsCount).keys()].map(i => "hidomain"+i);
+      const coinsMap = {value: initialDomainPrice}
+      
+      for (let domain of domains) {
+        await expect(domainRegistar.registerDomain(domain, coinsMap))
+          .not.to.be.reverted
+      }
     });
   });
 
@@ -132,7 +144,7 @@ describe.only("DomainRegistar", function () {
         .to.changeEtherBalances([domainRegistar, owner], [-domainPrice, domainPrice]);
     });
 
-    it("Should resctict coin withdrawal to an owner only", async function () {
+    it("Should restrict coin withdrawal to an owner only", async function () {
       const domainPrice = 5000;
       const {domainRegistar, otherAccounts} = await deployContract(domainPrice);
 
