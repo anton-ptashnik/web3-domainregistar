@@ -16,14 +16,26 @@ error TopLevelDomainsOnly();
  * @author Me
  */
 contract DomainRegistar is Initializable {
-    /// @notice Address of the account that deployed the contract
-    address payable public owner;
+    /// @custom:storage-location erc7201:DomainRegistar.main
+    struct MainStorage {
+        /// @notice Address of the account that deployed the contract
+        address payable owner;
 
-    /// @notice Price payed for domain registration
-    uint public weiDomainPrice;
+        /// @notice Price payed for domain registration
+        uint weiDomainPrice;
+        
+        mapping(address => string[]) _domains;
+        mapping(string => bool) _exists;
+    }
     
-    mapping(address => string[]) private _domains;
-    mapping(string => bool) private _exists;
+    // keccak256(abi.encode(uint256(keccak256("DomainRegistar.main")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant MAIN_STORAGE_LOCATION = 0x7b039d00eb6b93db42c4878af000bf4f52751a20d25ae3b0c322c5cf77ae8600;
+    
+    function _getMainStorage() private pure returns (MainStorage storage $) {
+        assembly {
+            $.slot := MAIN_STORAGE_LOCATION
+        }
+    }
 
     /**
      * Emitted on domain registration
@@ -41,8 +53,17 @@ contract DomainRegistar is Initializable {
     event PriceChanged(uint newPrice, uint oldPrice);
 
     function initialize(uint _domainPrice) public initializer {
-        owner = payable(msg.sender);
-        weiDomainPrice = _domainPrice;
+        MainStorage storage $ = _getMainStorage();
+        $.owner = payable(msg.sender);
+        $.weiDomainPrice = _domainPrice;
+    }
+
+    function weiDomainPrice() external view returns (uint) {
+        return _getMainStorage().weiDomainPrice;
+    }
+
+    function owner() external view returns (address) {
+        return _getMainStorage().owner;
     }
 
     /**
@@ -50,11 +71,12 @@ contract DomainRegistar is Initializable {
      * @param newPrice price to be set
      */
     function updateDomainPrice(uint newPrice) public {
-        if(msg.sender != owner) {
+        MainStorage storage $ = _getMainStorage();
+        if(msg.sender != $.owner) {
             revert AccessDenied("Domain price can be changed by owner only");
         }
-        emit PriceChanged(newPrice, weiDomainPrice);
-        weiDomainPrice = newPrice;
+        emit PriceChanged(newPrice, $.weiDomainPrice);
+        $.weiDomainPrice = newPrice;
     }
 
     /**
@@ -62,8 +84,10 @@ contract DomainRegistar is Initializable {
      * @param domain domain to register
      */
     function registerDomain(string calldata domain) public payable {
-        if(msg.value < weiDomainPrice) {
-            revert NotEnoughFunds(msg.value, weiDomainPrice);
+        MainStorage storage $ = _getMainStorage();
+
+        if(msg.value < $.weiDomainPrice) {
+            revert NotEnoughFunds(msg.value, $.weiDomainPrice);
         }
         if(!_isTopLevelDomain(domain)) {
             revert TopLevelDomainsOnly();
@@ -72,8 +96,8 @@ contract DomainRegistar is Initializable {
             revert DuplicateDomain();
         }
 
-        _exists[domain] = true;
-        _domains[msg.sender].push(domain);
+        $._exists[domain] = true;
+        $._domains[msg.sender].push(domain);
         emit DomainRegistered(msg.sender, msg.sender, domain);
     }
 
@@ -81,14 +105,16 @@ contract DomainRegistar is Initializable {
      * Send all coins to the owner. Allowed for the owner only
      */
     function withdraw() public {
-        if(msg.sender != owner) {
+        MainStorage storage $ = _getMainStorage();
+
+        if(msg.sender != $.owner) {
             revert AccessDenied("Only owner can request balance withdrawal");
         }
-        owner.transfer(address(this).balance);
+        $.owner.transfer(address(this).balance);
     }
 
     function _isNewDomain(string memory domain) private view returns (bool) {
-        return !_exists[domain];
+        return !_getMainStorage()._exists[domain];
     }
 
     function _isTopLevelDomain(string memory domain) private pure returns (bool) {
