@@ -66,6 +66,29 @@ describe("DomainRegistar", function () {
         .to.be.revertedWithCustomError(domainRegistar, "AccessDenied");
       expect(await domainRegistarNonOwner.weiDomainPrice()).to.equal(initialDomainPrice);
     });
+
+    it("Should set a new subdomain price on domain owner request", async function () {
+      const { domainRegistar, initialDomainPrice, otherAccounts } = await loadFixture(deployContract);
+
+      const domainName0 = "domain";
+      const domainName1 = "sub.domain";
+      const contractOwnerPrice = initialDomainPrice;
+
+      const domainOwner0 = otherAccounts[0]
+      const domainRegistar0 = domainRegistar.connect(domainOwner0);
+      const domainPrice0 = initialDomainPrice+1000;
+      await expect(domainRegistar0.registerDomain(domainName0, {value: contractOwnerPrice}))
+      .to.emit(domainRegistar, "DomainRegistered").withArgs(anyValue, domainOwner0.address, domainName0);
+      
+      await expect(domainRegistar0.updateSubdomainPrice(domainPrice0, domainName0))
+      .to.emit(domainRegistar, "PriceChanged").withArgs(domainPrice0, initialDomainPrice);
+      expect(await domainRegistar.subdomainPrice(domainName0)).to.equal(domainPrice0);
+
+      const domainOwner1 = otherAccounts[1]
+      const domainRegistar1 = domainRegistar.connect(domainOwner1);
+      await expect(domainRegistar1.registerDomain(domainName1, {value: domainPrice0}))
+      .to.emit(domainRegistar, "DomainRegistered").withArgs(anyValue, domainOwner1.address, domainName1);
+    });
   });
 
   describe("Domain registration", function () {

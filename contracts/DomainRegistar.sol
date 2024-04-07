@@ -96,6 +96,31 @@ contract DomainRegistar is Initializable {
     }
 
     /**
+     * Return price for domain registration belonging to the specified parent domain
+     * @param domainFullpath domain name starting from top-level domain
+     */
+    function subdomainPrice(string calldata domainFullpath) external view returns(uint) {
+        string[] memory domainLevels = _parseDomainLevels(domainFullpath);
+        DomainEntry storage e = _findDomainEntry(domainLevels);
+        return e.weiDomainPrice;
+    }
+
+    /**
+     * Update price for new domains under the specified parent domain
+     * @param newPrice new domain price
+     * @param domainFullpath parent domain name starting from the top-level domain
+     */
+    function updateSubdomainPrice(uint newPrice, string calldata domainFullpath) public {
+        string[] memory domainLevels = _parseDomainLevels(domainFullpath);
+        DomainEntry storage e = _findDomainEntry(domainLevels);
+        if(msg.sender != e.owner) {
+            revert AccessDenied("Domain price can be changed by owner only");
+        }
+        emit PriceChanged(newPrice, e.weiDomainPrice);
+        e.weiDomainPrice = newPrice;
+    }
+
+    /**
      * Register a new domain
      * @param domainFullname domain to register provided as fullpath starting from root: mydomain.lvl1.lvl0
      */
@@ -113,6 +138,7 @@ contract DomainRegistar is Initializable {
         DomainEntry storage newEntry = parentEntry.subdomains[newSubdomainName];
         newEntry.owner = payable(msg.sender);
         newEntry.domainName = newSubdomainName;
+        newEntry.weiDomainPrice = $.rootEntry.weiDomainPrice;
         emit DomainRegistered(msg.sender, msg.sender, domainFullname);
     }
 
@@ -142,6 +168,16 @@ contract DomainRegistar is Initializable {
         DomainEntry storage e = _getMainStorage().rootEntry;
         
         for (uint domainLevel; domainLevel < domainLevels.length-1; ++domainLevel) {
+            e = e.subdomains[domainLevels[domainLevel]];
+            if (e.owner == address(0)) revert ParentDomainDoesNotExists();
+        }
+        return e;
+    }
+
+    function _findDomainEntry(string[] memory domainLevels) private view returns (DomainEntry storage) {
+        DomainEntry storage e = _getMainStorage().rootEntry;
+        
+        for (uint domainLevel; domainLevel < domainLevels.length; ++domainLevel) {
             e = e.subdomains[domainLevels[domainLevel]];
             if (e.owner == address(0)) revert ParentDomainDoesNotExists();
         }
