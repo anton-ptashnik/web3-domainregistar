@@ -108,14 +108,7 @@ describe("DomainRegistar", function () {
       await expect(domainRegistar.registerDomain("hidomain", {value: initialDomainPrice-1}))
         .to.revertedWithCustomError(domainRegistar, "NotEnoughFunds");
     });
-
-    it("Should refuse registration of nested domains", async function () {
-      const { domainRegistar, initialDomainPrice } = await loadFixture(deployContract);
-      const domainName = "sub.domain";
-      await expect(domainRegistar.registerDomain(domainName, {value: initialDomainPrice}))
-        .to.be.revertedWithCustomError(domainRegistar, "TopLevelDomainsOnly");
-    });
-
+    
     it.skip("Should scale", async function () {
       this.timeout(120000);
       const { domainRegistar, initialDomainPrice, owner } = await loadFixture(deployContract);
@@ -125,8 +118,39 @@ describe("DomainRegistar", function () {
       
       for (let domain of domains) {
         await expect(domainRegistar.registerDomain(domain, coinsMap))
-          .not.to.be.reverted
+        .not.to.be.reverted
       }
+    });
+    
+    it("Should allow subdomains", async function () {
+      const { domainRegistar, initialDomainPrice, owner, otherAccounts } = await loadFixture(deployContract);
+
+      const domainName0 = "domain";
+      const domainName1 = "sub.domain";
+      const domainName2 = "sub.sub.domain";
+      const coinsMap = {value: initialDomainPrice}
+      await expect(domainRegistar.registerDomain(domainName0, coinsMap))
+      .to.emit(domainRegistar, "DomainRegistered")
+      .withArgs(anyValue, owner.address, domainName0);
+      
+      const anotherAccount = otherAccounts[0];
+      const domainRegistarAnotherAccount = domainRegistar.connect(anotherAccount);
+      await expect(domainRegistarAnotherAccount.registerDomain(domainName1, coinsMap))
+      .to.emit(domainRegistar, "DomainRegistered")
+      .withArgs(anyValue, anotherAccount.address, domainName1);
+
+      const anotherAccount2 = otherAccounts[1];
+      const domainRegistarAnotherAccount2 = domainRegistar.connect(anotherAccount2);
+      await expect(domainRegistarAnotherAccount2.registerDomain(domainName2, coinsMap))
+      .to.emit(domainRegistar, "DomainRegistered")
+      .withArgs(anyValue, anotherAccount2.address, domainName2);
+    });
+
+    it("Should refuse registration when parent domain does not exist", async function () {
+      const { domainRegistar, initialDomainPrice } = await loadFixture(deployContract);
+      const domainName = "sub.domain";
+      await expect(domainRegistar.registerDomain(domainName, {value: initialDomainPrice}))
+        .to.be.revertedWithCustomError(domainRegistar, "ParentDomainDoesNotExists");
     });
   });
 

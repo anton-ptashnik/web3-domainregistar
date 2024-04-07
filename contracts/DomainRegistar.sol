@@ -4,12 +4,13 @@ pragma solidity ^0.8.24;
 // Uncomment this line to use console.log
 // import "hardhat/console.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-
+import "solidity-stringutils/strings.sol";
 
 error AccessDenied(string description);
 error NotEnoughFunds(uint provided, uint required);
 error DuplicateDomain();
-error TopLevelDomainsOnly();
+error ParentDomainDoesNotExists();
+error InvalidDomainName();
 
 /**
  * @title A simple contract for top-level domain registration
@@ -43,6 +44,8 @@ contract DomainRegistar is Initializable {
             $.slot := MAIN_STORAGE_LOCATION
         }
     }
+
+    using strings for *;    
 
     /**
      * Emitted on domain registration
@@ -94,25 +97,23 @@ contract DomainRegistar is Initializable {
 
     /**
      * Register a new domain
-     * @param domain domain to register
+     * @param domainFullname domain to register provided as fullpath starting from root: mydomain.lvl1.lvl0
      */
-    function registerDomain(string calldata domain) public payable {
+    function registerDomain(string calldata domainFullname) public payable {
         MainStorage storage $ = _getMainStorage();
 
-        if(msg.value < $.rootEntry.weiDomainPrice) {
-            revert NotEnoughFunds(msg.value, $.rootEntry.weiDomainPrice);
-        }
-        if(!_isTopLevelDomain(domain)) {
-            revert TopLevelDomainsOnly();
-        }
-        if(!_isNewDomain(domain)) {
-            revert DuplicateDomain();
-        }
+        _validatePrice($.rootEntry.weiDomainPrice);
+        _validateDomainFullname(domainFullname);
 
-        DomainEntry storage entry = $.rootEntry.subdomains[domain];
-        entry.owner = payable(msg.sender);
-        entry.domainName = domain;
-        emit DomainRegistered(msg.sender, msg.sender, domain);
+        string[] memory domainLevels = _parseDomainLevels(domainFullname);
+        string memory newSubdomainName = domainLevels[domainLevels.length - 1];
+        DomainEntry storage parentEntry = _findParentDomainEntry(domainLevels);
+        _validateNewDomain(parentEntry, newSubdomainName);
+        
+        DomainEntry storage newEntry = parentEntry.subdomains[newSubdomainName];
+        newEntry.owner = payable(msg.sender);
+        newEntry.domainName = newSubdomainName;
+        emit DomainRegistered(msg.sender, msg.sender, domainFullname);
     }
 
     /**
@@ -127,26 +128,53 @@ contract DomainRegistar is Initializable {
         $.rootEntry.owner.transfer(address(this).balance);
     }
 
-    function _isNewDomain(string memory domain) private view returns (bool) {
-        return _getMainStorage().rootEntry.subdomains[domain].owner == address(0);
+    function _validatePrice(uint requiredPrice) private view {
+        if(msg.value < requiredPrice) {
+            revert NotEnoughFunds(msg.value, requiredPrice);
+        }
     }
 
-    function _isTopLevelDomain(string memory domain) private pure returns (bool) {
+    function _validateNewDomain(DomainEntry storage parentDomainEntry, string memory domain) private view {
+        if (parentDomainEntry.subdomains[domain].owner != address(0)) revert DuplicateDomain();
+    }
+
+    function _findParentDomainEntry(string[] memory domainLevels) private view returns (DomainEntry storage) {
+        DomainEntry storage e = _getMainStorage().rootEntry;
+        
+        for (uint domainLevel; domainLevel < domainLevels.length-1; ++domainLevel) {
+            e = e.subdomains[domainLevels[domainLevel]];
+            if (e.owner == address(0)) revert ParentDomainDoesNotExists();
+        }
+        return e;
+    }
+
+    function _validateDomainFullname(string memory domain) private pure {
         bytes1 a = bytes1("a");
         bytes1 z = bytes1("z");
         bytes1 A = bytes1("A");
         bytes1 Z = bytes1("Z");
         bytes1 zero = bytes1("0");
         bytes1 nine = bytes1("9");
+        bytes1 dot = bytes1(".");
         bytes memory _bytes = bytes(domain);
         for (uint i = 0; i < _bytes.length; i++) {
             if (!(
                 (_bytes[i] >= a && _bytes[i] <= z) ||
                 (_bytes[i] >= A && _bytes[i] <= Z) ||
-                (_bytes[i] >= zero && _bytes[i] <= nine))) {
-                return false;
+                (_bytes[i] >= zero && _bytes[i] <= nine) ||
+                _bytes[i] == dot)) {
+                revert InvalidDomainName();
             }
         }
-        return true;
+    }
+
+    function _parseDomainLevels(string memory domain) public pure returns (string[] memory parts) {
+        strings.slice memory sl = domain.toSlice();
+        strings.slice memory delim = ".".toSlice();
+        uint n = sl.count(delim) + 1;
+        parts = new string[](n);
+        for(uint i = 0; i < parts.length; ++i) {
+            parts[n-i-1] = sl.split(delim).toString();
+        }
     }
 }
