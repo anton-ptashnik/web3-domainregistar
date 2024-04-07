@@ -16,16 +16,23 @@ error TopLevelDomainsOnly();
  * @author Me
  */
 contract DomainRegistar is Initializable {
-    /// @custom:storage-location erc7201:DomainRegistar.main
-    struct MainStorage {
+    struct DomainEntry {
         /// @notice Address of the account that deployed the contract
         address payable owner;
 
         /// @notice Price payed for domain registration
         uint weiDomainPrice;
-        
-        mapping(address => string[]) _domains;
-        mapping(string => bool) _exists;
+
+        /// @notice Domain name
+        string domainName;
+
+        /// @notice Collection of subdomains
+        mapping (string => DomainEntry) subdomains;
+    }
+    /// @custom:storage-location erc7201:DomainRegistar.main
+    struct MainStorage {
+        /// @notice A root entry holding top-level domains
+        DomainEntry rootEntry;
     }
     
     // keccak256(abi.encode(uint256(keccak256("DomainRegistar.main")) - 1)) & ~bytes32(uint256(0xff));
@@ -54,16 +61,22 @@ contract DomainRegistar is Initializable {
 
     function initialize(uint _domainPrice) public initializer {
         MainStorage storage $ = _getMainStorage();
-        $.owner = payable(msg.sender);
-        $.weiDomainPrice = _domainPrice;
+        $.rootEntry.owner = payable(msg.sender);
+        $.rootEntry.weiDomainPrice = _domainPrice;
     }
 
+    /**
+     * Return an actual price for domain registration
+     */
     function weiDomainPrice() external view returns (uint) {
-        return _getMainStorage().weiDomainPrice;
+        return _getMainStorage().rootEntry.weiDomainPrice;
     }
 
+    /**
+     * Return an address of contract owner
+     */
     function owner() external view returns (address) {
-        return _getMainStorage().owner;
+        return _getMainStorage().rootEntry.owner;
     }
 
     /**
@@ -72,11 +85,11 @@ contract DomainRegistar is Initializable {
      */
     function updateDomainPrice(uint newPrice) public {
         MainStorage storage $ = _getMainStorage();
-        if(msg.sender != $.owner) {
+        if(msg.sender != $.rootEntry.owner) {
             revert AccessDenied("Domain price can be changed by owner only");
         }
-        emit PriceChanged(newPrice, $.weiDomainPrice);
-        $.weiDomainPrice = newPrice;
+        emit PriceChanged(newPrice, $.rootEntry.weiDomainPrice);
+        $.rootEntry.weiDomainPrice = newPrice;
     }
 
     /**
@@ -86,8 +99,8 @@ contract DomainRegistar is Initializable {
     function registerDomain(string calldata domain) public payable {
         MainStorage storage $ = _getMainStorage();
 
-        if(msg.value < $.weiDomainPrice) {
-            revert NotEnoughFunds(msg.value, $.weiDomainPrice);
+        if(msg.value < $.rootEntry.weiDomainPrice) {
+            revert NotEnoughFunds(msg.value, $.rootEntry.weiDomainPrice);
         }
         if(!_isTopLevelDomain(domain)) {
             revert TopLevelDomainsOnly();
@@ -96,8 +109,9 @@ contract DomainRegistar is Initializable {
             revert DuplicateDomain();
         }
 
-        $._exists[domain] = true;
-        $._domains[msg.sender].push(domain);
+        DomainEntry storage entry = $.rootEntry.subdomains[domain];
+        entry.owner = payable(msg.sender);
+        entry.domainName = domain;
         emit DomainRegistered(msg.sender, msg.sender, domain);
     }
 
@@ -107,14 +121,14 @@ contract DomainRegistar is Initializable {
     function withdraw() public {
         MainStorage storage $ = _getMainStorage();
 
-        if(msg.sender != $.owner) {
+        if(msg.sender != $.rootEntry.owner) {
             revert AccessDenied("Only owner can request balance withdrawal");
         }
-        $.owner.transfer(address(this).balance);
+        $.rootEntry.owner.transfer(address(this).balance);
     }
 
     function _isNewDomain(string memory domain) private view returns (bool) {
-        return !_getMainStorage()._exists[domain];
+        return _getMainStorage().rootEntry.subdomains[domain].owner == address(0);
     }
 
     function _isTopLevelDomain(string memory domain) private pure returns (bool) {
