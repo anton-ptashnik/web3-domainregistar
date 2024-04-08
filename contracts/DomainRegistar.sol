@@ -36,16 +36,13 @@ library DomainUtils {
     function _validateDomainFullname(string memory domain) private pure {
         bytes1 a = bytes1("a");
         bytes1 z = bytes1("z");
-        bytes1 A = bytes1("A");
-        bytes1 Z = bytes1("Z");
         bytes1 zero = bytes1("0");
         bytes1 nine = bytes1("9");
         bytes1 dot = bytes1(".");
         bytes memory _bytes = bytes(domain);
-        for (uint i = 0; i < _bytes.length; i++) {
+        for (uint i = 0; i < _bytes.length; ++i) {
             if (!(
                 (_bytes[i] >= a && _bytes[i] <= z) ||
-                (_bytes[i] >= A && _bytes[i] <= Z) ||
                 (_bytes[i] >= zero && _bytes[i] <= nine) ||
                 _bytes[i] == dot)) {
                 revert InvalidDomainName();
@@ -154,7 +151,7 @@ contract DomainRegistar is Initializable {
      * Set a new price for domain registration. Allowed for owner only
      * @param newPrice price to be set
      */
-    function updateDomainPrice(uint newPrice) public {
+    function updateDomainPrice(uint newPrice) external {
         MainStorage storage $ = _getMainStorage();
         if(msg.sender != $.rootEntry.owner) {
             revert AccessDenied("Domain price can be changed by owner only");
@@ -179,7 +176,7 @@ contract DomainRegistar is Initializable {
      * @param newPrice new domain price
      * @param domainFullpath parent domain name starting from the top-level domain
      */
-    function updateSubdomainPrice(uint newPrice, string calldata domainFullpath) public {
+    function updateSubdomainPrice(uint newPrice, string calldata domainFullpath) external {
         MainStorage storage $ = _getMainStorage();
         string[] memory domainLevels = DomainUtils._parseDomainLevels(domainFullpath);
         DomainUtils.DomainEntry storage e = $.rootEntry._findDomainEntry(domainLevels);
@@ -194,7 +191,7 @@ contract DomainRegistar is Initializable {
      * Register a new domain
      * @param domainFullname domain to register provided as fullpath starting from root: mydomain.lvl1.lvl0
      */
-    function registerDomain(string calldata domainFullname) public payable {
+    function registerDomain(string calldata domainFullname) external payable {
         MainStorage storage $ = _getMainStorage();
 
         string[] memory domainLevels = DomainUtils._parseDomainLevels(domainFullname);
@@ -214,7 +211,7 @@ contract DomainRegistar is Initializable {
     /**
      * Send all coins to the owner. Allowed for the owner only
      */
-    function withdraw() public {
+    function withdraw() external {
         MainStorage storage $ = _getMainStorage();
 
         address payable receiver = payable(msg.sender);
