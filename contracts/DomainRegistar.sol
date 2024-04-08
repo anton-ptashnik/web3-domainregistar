@@ -50,40 +50,29 @@ library DomainUtils {
         }
     }
 
-    function _parseDomainLevels(string memory domain) internal pure returns (string[] memory parts) {
+    function _parseDomainLevels(string memory domain) internal pure returns (string[] memory levels) {
         _validateDomainFullname(domain);
 
         strings.slice memory sl = domain.toSlice();
         strings.slice memory delim = ".".toSlice();
-        uint n = sl.count(delim) + 1;
-        parts = new string[](n);
-        for(uint i = 0; i < parts.length; ++i) {
-            parts[n-i-1] = sl.split(delim).toString();
+        uint8 n = uint8(sl.count(delim) + 1);
+        levels = new string[](n);
+        for(uint i = 0; i < n; ++i) {
+            levels[n-i-1] = sl.split(delim).toString();
         }
     }
 
-    function _checkSubdomainExists(DomainEntry storage parentDomainEntry, string memory domain) internal view returns(bool) {
-        return parentDomainEntry.subdomains[domain].owner != address(0);
+    function _hasSubdomain(DomainEntry storage self, string memory subdomain) internal view returns(bool) {
+        return self.subdomains[subdomain].owner != address(0);
     }
 
-    function _findParentDomainEntry(DomainEntry storage rootEntry, string[] memory domainLevels) internal view returns (DomainEntry storage) {
-        DomainEntry storage e = rootEntry;
+    function _findDomainEntry(DomainEntry storage self, string[] memory levels, uint targetLevel) internal view returns (DomainEntry storage entry) {
+        entry = self;
         
-        for (uint domainLevel; domainLevel < domainLevels.length-1; ++domainLevel) {
-            e = e.subdomains[domainLevels[domainLevel]];
-            if (e.owner == address(0)) revert ParentDomainDoesNotExists();
+        for (uint domainLevel; domainLevel < targetLevel; ++domainLevel) {
+            entry = entry.subdomains[levels[domainLevel]];
+            if (entry.owner == address(0)) revert ParentDomainDoesNotExists();
         }
-        return e;
-    }
-
-    function _findDomainEntry(DomainEntry storage rootEntry, string[] memory domainLevels) internal view returns (DomainEntry storage) {
-        DomainEntry storage e = rootEntry;
-        
-        for (uint domainLevel; domainLevel < domainLevels.length; ++domainLevel) {
-            e = e.subdomains[domainLevels[domainLevel]];
-            if (e.owner == address(0)) revert ParentDomainDoesNotExists();
-        }
-        return e;
     }
 }
 
@@ -167,8 +156,7 @@ contract DomainRegistar is Initializable {
     function subdomainPrice(string calldata domainFullpath) external view returns(uint) {
         MainStorage storage $ = _getMainStorage();
         string[] memory domainLevels = DomainUtils._parseDomainLevels(domainFullpath);
-        DomainUtils.DomainEntry storage e = $.rootEntry._findDomainEntry(domainLevels);
-        return e.weiDomainPrice;
+        return $.rootEntry._findDomainEntry(domainLevels, domainLevels.length).weiDomainPrice;
     }
 
     /**
@@ -179,7 +167,7 @@ contract DomainRegistar is Initializable {
     function updateSubdomainPrice(uint newPrice, string calldata domainFullpath) external {
         MainStorage storage $ = _getMainStorage();
         string[] memory domainLevels = DomainUtils._parseDomainLevels(domainFullpath);
-        DomainUtils.DomainEntry storage e = $.rootEntry._findDomainEntry(domainLevels);
+        DomainUtils.DomainEntry storage e = $.rootEntry._findDomainEntry(domainLevels, domainLevels.length);
         if(msg.sender != e.owner) {
             revert AccessDenied("Domain price can be changed by owner only");
         }
@@ -196,7 +184,7 @@ contract DomainRegistar is Initializable {
 
         string[] memory domainLevels = DomainUtils._parseDomainLevels(domainFullname);
         string memory newSubdomainName = domainLevels[domainLevels.length - 1];
-        DomainUtils.DomainEntry storage parentEntry = $.rootEntry._findParentDomainEntry(domainLevels);
+        DomainUtils.DomainEntry storage parentEntry = $.rootEntry._findDomainEntry(domainLevels, domainLevels.length-1);
         _validateNewDomain(parentEntry, newSubdomainName);
         _validatePrice(parentEntry.weiDomainPrice);
         
@@ -227,6 +215,6 @@ contract DomainRegistar is Initializable {
     }
 
     function _validateNewDomain(DomainUtils.DomainEntry storage parentEntry, string memory subdomain) private view {
-        if (parentEntry._checkSubdomainExists(subdomain)) revert DuplicateDomain();
+        if (parentEntry._hasSubdomain(subdomain)) revert DuplicateDomain();
     }
 }
