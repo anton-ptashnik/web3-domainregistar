@@ -34,6 +34,9 @@ contract DomainRegistar is Initializable {
     struct MainStorage {
         /// @notice A root entry holding top-level domains
         DomainEntry rootEntry;
+
+        /// @notice Per owner balance payed for registration of subdomains under domains held by the owner  
+        mapping(address => uint) shares;
     }
     
     // keccak256(abi.encode(uint256(keccak256("DomainRegistar.main")) - 1)) & ~bytes32(uint256(0xff));
@@ -127,18 +130,19 @@ contract DomainRegistar is Initializable {
     function registerDomain(string calldata domainFullname) public payable {
         MainStorage storage $ = _getMainStorage();
 
-        _validatePrice($.rootEntry.weiDomainPrice);
         _validateDomainFullname(domainFullname);
 
         string[] memory domainLevels = _parseDomainLevels(domainFullname);
         string memory newSubdomainName = domainLevels[domainLevels.length - 1];
         DomainEntry storage parentEntry = _findParentDomainEntry(domainLevels);
         _validateNewDomain(parentEntry, newSubdomainName);
+        _validatePrice(parentEntry.weiDomainPrice);
         
         DomainEntry storage newEntry = parentEntry.subdomains[newSubdomainName];
         newEntry.owner = payable(msg.sender);
         newEntry.domainName = newSubdomainName;
         newEntry.weiDomainPrice = $.rootEntry.weiDomainPrice;
+        $.shares[parentEntry.owner] += parentEntry.weiDomainPrice;
         emit DomainRegistered(msg.sender, msg.sender, domainFullname);
     }
 
@@ -148,10 +152,10 @@ contract DomainRegistar is Initializable {
     function withdraw() public {
         MainStorage storage $ = _getMainStorage();
 
-        if(msg.sender != $.rootEntry.owner) {
-            revert AccessDenied("Only owner can request balance withdrawal");
-        }
-        $.rootEntry.owner.transfer(address(this).balance);
+        address payable receiver = payable(msg.sender);
+        uint balance = $.shares[msg.sender];
+        $.shares[msg.sender] = 0;
+        receiver.transfer(balance);
     }
 
     function _validatePrice(uint requiredPrice) private view {

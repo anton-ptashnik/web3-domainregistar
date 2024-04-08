@@ -189,16 +189,35 @@ describe("DomainRegistar", function () {
         .to.changeEtherBalances([domainRegistar, owner], [-domainPrice, domainPrice]);
     });
 
-    it("Should restrict coin withdrawal to an owner only", async function () {
-      const domainPrice = 5000;
-      const {domainRegistar, otherAccounts} = await deployContract(domainPrice);
+    it("Should allow withdrawals for subdomain owners", async function () {
+      const { domainRegistar, initialDomainPrice, owner, otherAccounts } = await loadFixture(deployContract);
 
-      const domainRegistarAccount = domainRegistar.connect(otherAccounts[0]);
-      const nonOwnerAccount = domainRegistar.connect(otherAccounts[1]);
-      await domainRegistarAccount.registerDomain("hidomain", {value: domainPrice});
+      const domainName0 = "domain";
+      const accountDomainRegistar0 = otherAccounts[0];
+      const domainRegistar0 = domainRegistar.connect(accountDomainRegistar0);
+      const subdomains = [...Array(10).keys()].map(i => `sub${i}.domain`);
+      const subdomainPrice = initialDomainPrice + 1000;
+      await expect(domainRegistar0.registerDomain(domainName0, {value: initialDomainPrice}))
+      .to.emit(domainRegistar, "DomainRegistered")
+      .withArgs(anyValue, accountDomainRegistar0.address, domainName0);
       
-      await expect(nonOwnerAccount.withdraw())
-        .to.be.revertedWithCustomError(domainRegistar, "AccessDenied");
+      await domainRegistar0.updateSubdomainPrice(subdomainPrice, domainName0);
+
+      const accountDomainRegistar1 = otherAccounts[0];
+      const domainRegistar1 = domainRegistar.connect(accountDomainRegistar1);
+      for(let domainName of subdomains) {
+        await expect(domainRegistar1.registerDomain(domainName, {value: subdomainPrice}))
+        .to.emit(domainRegistar, "DomainRegistered")
+        .withArgs(anyValue, accountDomainRegistar1.address, domainName);
+      }
+
+      const totalSpentSubdomains = subdomains.length * subdomainPrice;
+      await expect(domainRegistar1.withdraw())
+        .to.changeEtherBalances([domainRegistar, accountDomainRegistar1], [-totalSpentSubdomains, totalSpentSubdomains]);
+
+      const totalSpentTopdomains = initialDomainPrice;
+      await expect(domainRegistar.withdraw())
+        .to.changeEtherBalances([domainRegistar, owner], [-totalSpentTopdomains, totalSpentTopdomains]);
     });
   });
 
