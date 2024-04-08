@@ -13,10 +13,12 @@ error ParentDomainDoesNotExists();
 error InvalidDomainName();
 
 /**
- * @title A simple contract for top-level domain registration
+ * @title Provides tools for storing and retrieving domain data
  * @author Me
  */
-contract DomainRegistar is Initializable {
+library DomainUtils {
+    using strings for *;
+
     struct DomainEntry {
         /// @notice Address of the account that deployed the contract
         address payable owner;
@@ -30,10 +32,73 @@ contract DomainRegistar is Initializable {
         /// @notice Collection of subdomains
         mapping (string => DomainEntry) subdomains;
     }
+
+    function _validateDomainFullname(string memory domain) private pure {
+        bytes1 a = bytes1("a");
+        bytes1 z = bytes1("z");
+        bytes1 A = bytes1("A");
+        bytes1 Z = bytes1("Z");
+        bytes1 zero = bytes1("0");
+        bytes1 nine = bytes1("9");
+        bytes1 dot = bytes1(".");
+        bytes memory _bytes = bytes(domain);
+        for (uint i = 0; i < _bytes.length; i++) {
+            if (!(
+                (_bytes[i] >= a && _bytes[i] <= z) ||
+                (_bytes[i] >= A && _bytes[i] <= Z) ||
+                (_bytes[i] >= zero && _bytes[i] <= nine) ||
+                _bytes[i] == dot)) {
+                revert InvalidDomainName();
+            }
+        }
+    }
+
+    function _parseDomainLevels(string memory domain) internal pure returns (string[] memory parts) {
+        _validateDomainFullname(domain);
+
+        strings.slice memory sl = domain.toSlice();
+        strings.slice memory delim = ".".toSlice();
+        uint n = sl.count(delim) + 1;
+        parts = new string[](n);
+        for(uint i = 0; i < parts.length; ++i) {
+            parts[n-i-1] = sl.split(delim).toString();
+        }
+    }
+
+    function _checkSubdomainExists(DomainEntry storage parentDomainEntry, string memory domain) internal view returns(bool) {
+        return parentDomainEntry.subdomains[domain].owner != address(0);
+    }
+
+    function _findParentDomainEntry(DomainEntry storage rootEntry, string[] memory domainLevels) internal view returns (DomainEntry storage) {
+        DomainEntry storage e = rootEntry;
+        
+        for (uint domainLevel; domainLevel < domainLevels.length-1; ++domainLevel) {
+            e = e.subdomains[domainLevels[domainLevel]];
+            if (e.owner == address(0)) revert ParentDomainDoesNotExists();
+        }
+        return e;
+    }
+
+    function _findDomainEntry(DomainEntry storage rootEntry, string[] memory domainLevels) internal view returns (DomainEntry storage) {
+        DomainEntry storage e = rootEntry;
+        
+        for (uint domainLevel; domainLevel < domainLevels.length; ++domainLevel) {
+            e = e.subdomains[domainLevels[domainLevel]];
+            if (e.owner == address(0)) revert ParentDomainDoesNotExists();
+        }
+        return e;
+    }
+}
+
+/**
+ * @title A simple contract for top-level domain registration
+ * @author Me
+ */
+contract DomainRegistar is Initializable {
     /// @custom:storage-location erc7201:DomainRegistar.main
     struct MainStorage {
         /// @notice A root entry holding top-level domains
-        DomainEntry rootEntry;
+        DomainUtils.DomainEntry rootEntry;
 
         /// @notice Per owner balance payed for registration of subdomains under domains held by the owner  
         mapping(address => uint) shares;
@@ -47,8 +112,6 @@ contract DomainRegistar is Initializable {
             $.slot := MAIN_STORAGE_LOCATION
         }
     }
-
-    using strings for *;    
 
     /**
      * Emitted on domain registration
@@ -64,6 +127,8 @@ contract DomainRegistar is Initializable {
      * @param oldPrice old price in Wei
      */
     event PriceChanged(uint newPrice, uint oldPrice);
+
+    using DomainUtils for DomainUtils.DomainEntry;
 
     function initialize(uint _domainPrice) public initializer {
         MainStorage storage $ = _getMainStorage();
@@ -103,8 +168,9 @@ contract DomainRegistar is Initializable {
      * @param domainFullpath domain name starting from top-level domain
      */
     function subdomainPrice(string calldata domainFullpath) external view returns(uint) {
-        string[] memory domainLevels = _parseDomainLevels(domainFullpath);
-        DomainEntry storage e = _findDomainEntry(domainLevels);
+        MainStorage storage $ = _getMainStorage();
+        string[] memory domainLevels = DomainUtils._parseDomainLevels(domainFullpath);
+        DomainUtils.DomainEntry storage e = $.rootEntry._findDomainEntry(domainLevels);
         return e.weiDomainPrice;
     }
 
@@ -114,8 +180,9 @@ contract DomainRegistar is Initializable {
      * @param domainFullpath parent domain name starting from the top-level domain
      */
     function updateSubdomainPrice(uint newPrice, string calldata domainFullpath) public {
-        string[] memory domainLevels = _parseDomainLevels(domainFullpath);
-        DomainEntry storage e = _findDomainEntry(domainLevels);
+        MainStorage storage $ = _getMainStorage();
+        string[] memory domainLevels = DomainUtils._parseDomainLevels(domainFullpath);
+        DomainUtils.DomainEntry storage e = $.rootEntry._findDomainEntry(domainLevels);
         if(msg.sender != e.owner) {
             revert AccessDenied("Domain price can be changed by owner only");
         }
@@ -130,15 +197,13 @@ contract DomainRegistar is Initializable {
     function registerDomain(string calldata domainFullname) public payable {
         MainStorage storage $ = _getMainStorage();
 
-        _validateDomainFullname(domainFullname);
-
-        string[] memory domainLevels = _parseDomainLevels(domainFullname);
+        string[] memory domainLevels = DomainUtils._parseDomainLevels(domainFullname);
         string memory newSubdomainName = domainLevels[domainLevels.length - 1];
-        DomainEntry storage parentEntry = _findParentDomainEntry(domainLevels);
+        DomainUtils.DomainEntry storage parentEntry = $.rootEntry._findParentDomainEntry(domainLevels);
         _validateNewDomain(parentEntry, newSubdomainName);
         _validatePrice(parentEntry.weiDomainPrice);
         
-        DomainEntry storage newEntry = parentEntry.subdomains[newSubdomainName];
+        DomainUtils.DomainEntry storage newEntry = parentEntry.subdomains[newSubdomainName];
         newEntry.owner = payable(msg.sender);
         newEntry.domainName = newSubdomainName;
         newEntry.weiDomainPrice = $.rootEntry.weiDomainPrice;
@@ -164,57 +229,7 @@ contract DomainRegistar is Initializable {
         }
     }
 
-    function _validateNewDomain(DomainEntry storage parentDomainEntry, string memory domain) private view {
-        if (parentDomainEntry.subdomains[domain].owner != address(0)) revert DuplicateDomain();
-    }
-
-    function _findParentDomainEntry(string[] memory domainLevels) private view returns (DomainEntry storage) {
-        DomainEntry storage e = _getMainStorage().rootEntry;
-        
-        for (uint domainLevel; domainLevel < domainLevels.length-1; ++domainLevel) {
-            e = e.subdomains[domainLevels[domainLevel]];
-            if (e.owner == address(0)) revert ParentDomainDoesNotExists();
-        }
-        return e;
-    }
-
-    function _findDomainEntry(string[] memory domainLevels) private view returns (DomainEntry storage) {
-        DomainEntry storage e = _getMainStorage().rootEntry;
-        
-        for (uint domainLevel; domainLevel < domainLevels.length; ++domainLevel) {
-            e = e.subdomains[domainLevels[domainLevel]];
-            if (e.owner == address(0)) revert ParentDomainDoesNotExists();
-        }
-        return e;
-    }
-
-    function _validateDomainFullname(string memory domain) private pure {
-        bytes1 a = bytes1("a");
-        bytes1 z = bytes1("z");
-        bytes1 A = bytes1("A");
-        bytes1 Z = bytes1("Z");
-        bytes1 zero = bytes1("0");
-        bytes1 nine = bytes1("9");
-        bytes1 dot = bytes1(".");
-        bytes memory _bytes = bytes(domain);
-        for (uint i = 0; i < _bytes.length; i++) {
-            if (!(
-                (_bytes[i] >= a && _bytes[i] <= z) ||
-                (_bytes[i] >= A && _bytes[i] <= Z) ||
-                (_bytes[i] >= zero && _bytes[i] <= nine) ||
-                _bytes[i] == dot)) {
-                revert InvalidDomainName();
-            }
-        }
-    }
-
-    function _parseDomainLevels(string memory domain) public pure returns (string[] memory parts) {
-        strings.slice memory sl = domain.toSlice();
-        strings.slice memory delim = ".".toSlice();
-        uint n = sl.count(delim) + 1;
-        parts = new string[](n);
-        for(uint i = 0; i < parts.length; ++i) {
-            parts[n-i-1] = sl.split(delim).toString();
-        }
+    function _validateNewDomain(DomainUtils.DomainEntry storage parentEntry, string memory subdomain) private view {
+        if (parentEntry._checkSubdomainExists(subdomain)) revert DuplicateDomain();
     }
 }
