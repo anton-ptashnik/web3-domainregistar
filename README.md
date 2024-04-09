@@ -10,9 +10,18 @@ Before running tests please install dependencies:
 git submodule update --init --recursive
 npm install
 ```
+
+### Contract features tests
+
+Run all contract tests using the command below. The contract gets deployed into a clean network and tests are run then.
+
+```shell
+npm run test
+```
+
 ### v1->v2 contract upgrade tests
 
-Run post-upgrade contract integrity tests using this command: 
+Run post-upgrade contract integrity tests the command below. It runs a test suite for contract upgrade verification, making sure that: 1 - v2 still supports v1 features, 2 - v2 supports subdomains.
 
 ```shell
 npm run test_v1to2_upgrade
