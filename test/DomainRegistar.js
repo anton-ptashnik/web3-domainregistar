@@ -5,7 +5,7 @@ const { anyValue } = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
-describe.only("DomainRegistar", function () {
+describe("DomainRegistar", function () {
   async function deployContract(initialDomainPrice = 6) {
     const [owner, ...otherAccounts] = await ethers.getSigners();
     const factory = await ethers.getContractFactory("DomainRegistar", owner);
