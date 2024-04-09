@@ -32,4 +32,7 @@ DATAFILE=test/datasets/preupgrade.json npx hardhat test --grep "access domains c
 echo "Verify v2 preserved top-level domain creation"
 DATAFILE=test/datasets/postupgrade.json npx hardhat test --grep "support top-level domain registration"
 
+echo "Verify v2 supports subdomain creation"
+DATAFILE=coverage/postupgrade_subdomains.json npx hardhat test --grep "Should support subdomain registration - post upgrade"
+
 echo "All tests pass!"

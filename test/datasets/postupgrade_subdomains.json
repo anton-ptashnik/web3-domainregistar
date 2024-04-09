@@ -1,0 +1,52 @@
+[
+    {
+        "domain": "v1top0",
+        "level": 0,
+        "ownerID": 1,
+        "price": 200000000
+    },
+    {
+        "domain": "v1top1",
+        "level": 0,
+        "ownerID": 1,
+        "price": 400000000
+    },
+    {
+        "domain": "v2top2",
+        "level": 0,
+        "ownerID": 3,
+        "price": 999999999999999
+    },
+    {
+        "domain": "v2top3",
+        "level": 0,
+        "ownerID": 4,
+        "price": 999999999999999
+    },
+    
+    {
+        "domain": "subdomain1.v2top2",
+        "level": 1,
+        "ownerID": 5,
+        "price": 66666666666666
+    },
+    {
+        "domain": "subdomain1.v2top3",
+        "level": 1,
+        "ownerID": 5,
+        "price": 66666666666666
+    },
+
+    {
+        "domain": "subdomain2.subdomain1.v2top2",
+        "level": 2,
+        "ownerID": 2,
+        "price": 2222222222222
+    },
+    {
+        "domain": "subdomain2.subdomain1.v2top3",
+        "level": 2,
+        "ownerID": 2,
+        "price": 2222222222222
+    }
+]

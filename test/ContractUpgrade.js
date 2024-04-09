@@ -27,6 +27,56 @@ describe("Post-upgrade integrity suite", function () {
         }
     });
 
+    it("Should support subdomain registration - post upgrade", async function () {
+        const [owner, ...otherAccounts] = await ethers.getSigners();
+        const factory = await ethers.getContractFactory("DomainRegistar", owner);
+        const domainRegistar = await factory.attach(process.env.CONTRACT_ADDR);
+        
+        const datafilePath = process.env.DATAFILE
+        const datafile = fs.readFileSync(datafilePath);
+        const domainsDataset = JSON.parse(datafile.toString());
+        
+        const toplevelDomains =  domainsDataset.filter(val => val.level == 0)
+        let domainPrices = {};
+        for (let domainData of toplevelDomains) {
+            const ownerAccount = otherAccounts[domainData.ownerID+1];
+            const ownerAccountConn = domainRegistar.connect(ownerAccount)
+            await expect(ownerAccountConn.updateSubdomainPrice(domainData.price, domainData.domain))
+            .to.emit(domainRegistar, "PriceChanged").withArgs(domainData.price, anyValue);
+            domainPrices[domainData.domain] = domainData.price;
+        }
+
+        const level1Domains =  domainsDataset.filter(val => val.level == 1)
+        for (let domainData of level1Domains) {
+            const ownerAccount = otherAccounts[domainData.ownerID+1];
+            const ownerAccountConn = domainRegistar.connect(ownerAccount)
+            const parentDomain = domainData.domain.substring(domainData.domain.indexOf('.')+1);
+            const subdomainPrice = domainPrices[parentDomain];
+            await expect(ownerAccountConn.registerDomain(domainData.domain, {value: subdomainPrice}))
+            .to.emit(domainRegistar, "DomainRegistered")
+            .withArgs(anyValue, ownerAccount.address, domainData.domain);
+
+            await expect(ownerAccountConn.updateSubdomainPrice(domainData.price, domainData.domain))
+            .to.emit(domainRegistar, "PriceChanged").withArgs(domainData.price, anyValue);
+            domainPrices[domainData.domain] = domainData.price;
+        }
+
+        const level2Domains =  domainsDataset.filter(val => val.level == 2)
+        for (let domainData of level2Domains) {
+            const ownerAccount = otherAccounts[domainData.ownerID+1];
+            const ownerAccountConn = domainRegistar.connect(ownerAccount)
+            const parentDomain = domainData.domain.substring(domainData.domain.indexOf('.')+1);
+            const subdomainPrice = domainPrices[parentDomain];
+            await expect(ownerAccountConn.registerDomain(domainData.domain, {value: subdomainPrice}))
+            .to.emit(domainRegistar, "DomainRegistered")
+            .withArgs(anyValue, ownerAccount.address, domainData.domain);
+
+            await expect(ownerAccountConn.updateSubdomainPrice(domainData.price, domainData.domain))
+            .to.emit(domainRegistar, "PriceChanged").withArgs(domainData.price, anyValue);
+            domainPrices[domainData.domain] = domainData.price;
+        }
+    });
+
     it("Should access domains created by v1 - post upgrade", async function () {
         const [owner] = await ethers.getSigners();
         const factory = await ethers.getContractFactory("DomainRegistar", owner);
