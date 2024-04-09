@@ -4,6 +4,11 @@ Basic service for accounting registered domain names that runs on Ethereum.
 
 ## Testing
 
+Before running tests please pull submodule dependencies:
+
+```shell
+git submodule update --init --recursive
+```
 ### v1->v2 contract upgrade tests
 
 Run tests to verify post-upgrade contract integrity as below 
