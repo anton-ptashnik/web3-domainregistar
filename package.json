@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test_v1to2_upgrade": "bash ./upgrage_check.sh"
   },
   "author": "me",
   "license": "ISC",
