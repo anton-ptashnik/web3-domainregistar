@@ -122,6 +122,11 @@ contract DomainRegistar is Initializable {
         $.rootEntry.weiDomainPrice = _domainPrice;
     }
 
+    function reinitialize() public reinitializer(2) {
+        MainStorage storage $ = _getMainStorage();
+        $.shares[$.rootEntry.owner] = address(this).balance;
+    }
+
     /**
      * Return an actual price for domain registration
      */
