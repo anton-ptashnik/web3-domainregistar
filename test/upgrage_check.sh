@@ -33,6 +33,9 @@ echo "Verify v2 preserved top-level domain creation"
 DATAFILE=test/datasets/postupgrade.json npx hardhat test --grep "support top-level domain registration"
 
 echo "Verify v2 supports subdomain creation"
-DATAFILE=coverage/postupgrade_subdomains.json npx hardhat test --grep "Should support subdomain registration - post upgrade"
+DATAFILE=test/datasets/postupgrade_subdomains.json npx hardhat test --grep "support subdomain registration"
+
+echo "Verify v2 supports coin withdrawals for all owners"
+DATAFILE=test/datasets/postupgrade_balances.json npx hardhat test --grep "allow withdrawals for all owners - post upgrade"
 
 echo "All tests pass!"

@@ -9,7 +9,8 @@ const fs = require("fs");
 
 describe("Post-upgrade integrity suite", function () {
     it("Should support top-level domain registration - pre/post upgrade", async function () {
-        const [owner, ...otherAccounts] = await ethers.getSigners();
+        const allAccounts = await ethers.getSigners();
+        const owner = allAccounts[0];
         const factory = await ethers.getContractFactory("DomainRegistar", owner);
         const domainRegistar = await factory.attach(process.env.CONTRACT_ADDR);
         
@@ -19,7 +20,7 @@ describe("Post-upgrade integrity suite", function () {
 
         const initialDomainPrice = await domainRegistar.weiDomainPrice()
         for (let domainData of topLevelDomainsDataset) {
-            const ownerAccount = otherAccounts[domainData.ownerID+1];
+            const ownerAccount = allAccounts[domainData.ownerID];
             const ownerAccountConn = domainRegistar.connect(ownerAccount)
             await expect(ownerAccountConn.registerDomain(domainData.domain, {value: initialDomainPrice}))
             .to.emit(domainRegistar, "DomainRegistered")
@@ -28,7 +29,8 @@ describe("Post-upgrade integrity suite", function () {
     });
 
     it("Should support subdomain registration - post upgrade", async function () {
-        const [owner, ...otherAccounts] = await ethers.getSigners();
+        const allAccounts = await ethers.getSigners();
+        const owner = allAccounts[0];
         const factory = await ethers.getContractFactory("DomainRegistar", owner);
         const domainRegistar = await factory.attach(process.env.CONTRACT_ADDR);
         
@@ -39,7 +41,7 @@ describe("Post-upgrade integrity suite", function () {
         const toplevelDomains =  domainsDataset.filter(val => val.level == 0)
         let domainPrices = {};
         for (let domainData of toplevelDomains) {
-            const ownerAccount = otherAccounts[domainData.ownerID+1];
+            const ownerAccount = allAccounts[domainData.ownerID];
             const ownerAccountConn = domainRegistar.connect(ownerAccount)
             await expect(ownerAccountConn.updateSubdomainPrice(domainData.price, domainData.domain))
             .to.emit(domainRegistar, "PriceChanged").withArgs(domainData.price, anyValue);
@@ -48,7 +50,7 @@ describe("Post-upgrade integrity suite", function () {
 
         const level1Domains =  domainsDataset.filter(val => val.level == 1)
         for (let domainData of level1Domains) {
-            const ownerAccount = otherAccounts[domainData.ownerID+1];
+            const ownerAccount = allAccounts[domainData.ownerID];
             const ownerAccountConn = domainRegistar.connect(ownerAccount)
             const parentDomain = domainData.domain.substring(domainData.domain.indexOf('.')+1);
             const subdomainPrice = domainPrices[parentDomain];
@@ -63,7 +65,7 @@ describe("Post-upgrade integrity suite", function () {
 
         const level2Domains =  domainsDataset.filter(val => val.level == 2)
         for (let domainData of level2Domains) {
-            const ownerAccount = otherAccounts[domainData.ownerID+1];
+            const ownerAccount = allAccounts[domainData.ownerID];
             const ownerAccountConn = domainRegistar.connect(ownerAccount)
             const parentDomain = domainData.domain.substring(domainData.domain.indexOf('.')+1);
             const subdomainPrice = domainPrices[parentDomain];
@@ -76,6 +78,24 @@ describe("Post-upgrade integrity suite", function () {
             domainPrices[domainData.domain] = domainData.price;
         }
     });
+
+    it("Should allow withdrawals for all owners - post upgrade", async function () {
+        const allAccounts = await ethers.getSigners();
+        const owner = allAccounts[0];
+        const factory = await ethers.getContractFactory("DomainRegistar", owner);
+        const domainRegistar = await factory.attach(process.env.CONTRACT_ADDR);
+        
+        const datafilePath = process.env.DATAFILE
+        const datafile = fs.readFileSync(datafilePath);
+        const domainsDataset = JSON.parse(datafile.toString());
+  
+        for(let balanceData of domainsDataset) {
+            const ownerAccount = allAccounts[balanceData.ownerID];
+            const ownerAccountConn = domainRegistar.connect(ownerAccount)
+            await expect(ownerAccountConn.withdraw())
+              .to.changeEtherBalances([domainRegistar, ownerAccount], [-balanceData.balance, balanceData.balance]);
+        }
+      });
 
     it("Should access domains created by v1 - post upgrade", async function () {
         const [owner] = await ethers.getSigners();

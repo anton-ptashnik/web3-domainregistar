@@ -1,0 +1,22 @@
+[
+    {
+        "ownerID": 0,
+        "balance": 8
+    },
+    {
+        "ownerID": 1,
+        "balance": 200000000
+    },
+    {
+        "ownerID": 3,
+        "balance": 0
+    },
+    {
+        "ownerID": 4,
+        "balance": 999999999999999
+    },
+    {
+        "ownerID": 5,
+        "balance": 133333333333332
+    }
+]

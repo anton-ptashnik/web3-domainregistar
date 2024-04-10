@@ -25,7 +25,7 @@
     },
     
     {
-        "domain": "subdomain1.v2top2",
+        "domain": "subdomain1.v1top0",
         "level": 1,
         "ownerID": 5,
         "price": 66666666666666
@@ -38,7 +38,7 @@
     },
 
     {
-        "domain": "subdomain2.subdomain1.v2top2",
+        "domain": "subdomain2.subdomain1.v1top0",
         "level": 2,
         "ownerID": 2,
         "price": 2222222222222
