@@ -63,21 +63,31 @@ contract DomainRegistar is Initializable {
     }
 
     /**
-     * Return an actual price for domain registration
-     */
-    function weiDomainPrice() external view returns (uint) {
-        return _getMainStorage().rootEntry.weiDomainPrice;
-    }
-
-    /**
-     * Return an address of contract owner
+     * Return an address of a contract owner
      */
     function owner() external view returns (address) {
         return _getMainStorage().rootEntry.owner;
     }
 
     /**
-     * Set a new price for domain registration. Allowed for owner only
+     * Return an actual price for top level domain registration
+     */
+    function weiDomainPrice() external view returns (uint) {
+        return _getMainStorage().rootEntry.weiDomainPrice;
+    }
+
+    /**
+     * Return price for registration of domains under the specified parent domain
+     * @param domainFullpath domain name starting from top-level domain
+     */
+    function subdomainPrice(string calldata domainFullpath) external view returns(uint) {
+        MainStorage storage $ = _getMainStorage();
+        string[] memory domainLevels = DomainUtils._parseDomainLevels(domainFullpath);
+        return $.rootEntry._findDomainEntry(domainLevels, domainLevels.length).weiDomainPrice;
+    }
+
+    /**
+     * Set a new price for top-level domain registration. Allowed for contract owner only
      * @param newPrice price to be set
      */
     function updateDomainPrice(uint newPrice) external {
@@ -90,16 +100,6 @@ contract DomainRegistar is Initializable {
     }
 
     /**
-     * Return price for domain registration belonging to the specified parent domain
-     * @param domainFullpath domain name starting from top-level domain
-     */
-    function subdomainPrice(string calldata domainFullpath) external view returns(uint) {
-        MainStorage storage $ = _getMainStorage();
-        string[] memory domainLevels = DomainUtils._parseDomainLevels(domainFullpath);
-        return $.rootEntry._findDomainEntry(domainLevels, domainLevels.length).weiDomainPrice;
-    }
-
-    /**
      * Update price for new domains under the specified parent domain
      * @param newPrice new domain price
      * @param domainFullpath parent domain name starting from the top-level domain
@@ -107,12 +107,12 @@ contract DomainRegistar is Initializable {
     function updateSubdomainPrice(uint newPrice, string calldata domainFullpath) external {
         MainStorage storage $ = _getMainStorage();
         string[] memory domainLevels = DomainUtils._parseDomainLevels(domainFullpath);
-        DomainUtils.DomainEntry storage e = $.rootEntry._findDomainEntry(domainLevels, domainLevels.length);
-        if(msg.sender != e.owner) {
+        DomainUtils.DomainEntry storage entry = $.rootEntry._findDomainEntry(domainLevels, domainLevels.length);
+        if(msg.sender != entry.owner) {
             revert AccessDenied("Domain price can be changed by owner only");
         }
-        emit PriceChanged(newPrice, e.weiDomainPrice);
-        e.weiDomainPrice = newPrice;
+        emit PriceChanged(newPrice, entry.weiDomainPrice);
+        entry.weiDomainPrice = newPrice;
     }
 
     /**
@@ -142,16 +142,13 @@ contract DomainRegistar is Initializable {
     function withdraw() external {
         MainStorage storage $ = _getMainStorage();
 
-        address payable receiver = payable(msg.sender);
         uint balance = $.shares[msg.sender];
         $.shares[msg.sender] = 0;
-        receiver.transfer(balance);
+        payable(msg.sender).transfer(balance);
     }
 
     function _validatePrice(uint requiredPrice) private view {
-        if(msg.value < requiredPrice) {
-            revert NotEnoughFunds(msg.value, requiredPrice);
-        }
+        if(msg.value < requiredPrice) revert NotEnoughFunds(msg.value, requiredPrice);
     }
 
     function _validateNewDomain(DomainUtils.DomainEntry storage parentEntry, string memory subdomain) private view {
