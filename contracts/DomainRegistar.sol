@@ -82,8 +82,8 @@ contract DomainRegistar is Initializable {
      */
     function subdomainPrice(string calldata domainFullpath) external view returns(uint) {
         MainStorage storage $ = _getMainStorage();
-        string[] memory domainLevels = DomainUtils._parseDomainLevels(domainFullpath);
-        return $.rootEntry._findDomainEntry(domainLevels, domainLevels.length).weiDomainPrice;
+        string[] memory domainLevels = DomainUtils.parseDomainLevels(domainFullpath);
+        return $.rootEntry.findDomainEntry(domainLevels, domainLevels.length).weiDomainPrice;
     }
 
     /**
@@ -106,8 +106,8 @@ contract DomainRegistar is Initializable {
      */
     function updateSubdomainPrice(uint newPrice, string calldata domainFullpath) external {
         MainStorage storage $ = _getMainStorage();
-        string[] memory domainLevels = DomainUtils._parseDomainLevels(domainFullpath);
-        DomainUtils.DomainEntry storage entry = $.rootEntry._findDomainEntry(domainLevels, domainLevels.length);
+        string[] memory domainLevels = DomainUtils.parseDomainLevels(domainFullpath);
+        DomainUtils.DomainEntry storage entry = $.rootEntry.findDomainEntry(domainLevels, domainLevels.length);
         if(msg.sender != entry.owner) {
             revert AccessDenied("Domain price can be changed by owner only");
         }
@@ -122,9 +122,9 @@ contract DomainRegistar is Initializable {
     function registerDomain(string calldata domainFullname) external payable {
         MainStorage storage $ = _getMainStorage();
 
-        string[] memory domainLevels = DomainUtils._parseDomainLevels(domainFullname);
+        string[] memory domainLevels = DomainUtils.parseDomainLevels(domainFullname);
         string memory newSubdomainName = domainLevels[domainLevels.length - 1];
-        DomainUtils.DomainEntry storage parentEntry = $.rootEntry._findDomainEntry(domainLevels, domainLevels.length-1);
+        DomainUtils.DomainEntry storage parentEntry = $.rootEntry.findDomainEntry(domainLevels, domainLevels.length-1);
         _validateNewDomain(parentEntry, newSubdomainName);
         _validatePrice(parentEntry.weiDomainPrice);
         
@@ -152,6 +152,6 @@ contract DomainRegistar is Initializable {
     }
 
     function _validateNewDomain(DomainUtils.DomainEntry storage parentEntry, string memory subdomain) private view {
-        if (parentEntry._hasSubdomain(subdomain)) revert DuplicateDomain();
+        if (parentEntry.hasSubdomain(subdomain)) revert DuplicateDomain();
     }
 }

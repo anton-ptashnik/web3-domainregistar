@@ -45,7 +45,11 @@ library DomainUtils {
         }
     }
 
-    function _parseDomainLevels(string memory domain) internal pure returns (string[] memory levels) {
+    /**
+     * Parse domain fullpath and returns an array of domain levels, starting from the top level 
+     * @param domain full domain path, like subtwo.sub.top
+     */
+    function parseDomainLevels(string memory domain) internal pure returns (string[] memory levels) {
         _validateDomainFullname(domain);
 
         strings.slice memory sl = domain.toSlice();
@@ -57,11 +61,22 @@ library DomainUtils {
         }
     }
 
-    function _hasSubdomain(DomainEntry storage self, string memory subdomain) internal view returns(bool) {
+    /**
+     * Checks if a provided domain exists under the self parent domain
+     * @param self DomainEntry
+     * @param subdomain name of the domain to check
+     */
+    function hasSubdomain(DomainEntry storage self, string memory subdomain) internal view returns(bool) {
         return self.subdomains[subdomain].owner != address(0);
     }
 
-    function _findDomainEntry(DomainEntry storage self, string[] memory levels, uint targetLevel) internal view returns (DomainEntry storage entry) {
+    /**
+     * Search for a DomainEntry under self by domain fullpath
+     * @param self DomainEntry to search in
+     * @param levels parsed domain fullpath
+     * @param targetLevel depth limit 
+     */
+    function findDomainEntry(DomainEntry storage self, string[] memory levels, uint targetLevel) internal view returns (DomainEntry storage entry) {
         entry = self;
         
         for (uint domainLevel; domainLevel < targetLevel; ++domainLevel) {
