@@ -12,8 +12,9 @@ export HARDHAT_NETWORK=localhost
 UPGRADE_TESTPATH="test/ContractUpgrade.js"
 TESTDATA_DIR="test/datasets"
 
+echo "Checkout contract v1 codebase"
+git checkout v1.0.0
 echo "Test contract v1 separately before deploy"
-git checkout hw2p1-make-contract-upgradable
 npx hardhat test ./test/DomainRegistar.js --network hardhat
 
 echo "Deploy a contract v1 to a live network"
@@ -22,8 +23,9 @@ CONTRACT_ADDR=`cat $LOGS_DIR/out.log | sed -n "s/Contract deployed to: \([^']\+\
 if [ -z "$CONTRACT_ADDR" ]; then echo "Could not parse contract address"; exit 1; fi
 export CONTRACT_ADDR
 
-echo "Populate data for a contract"
-git checkout hw2p2-support-subdomains
+echo "Checkout contract v2 codebase"
+git checkout v2.0.0
+echo "Populate data for a live contract"
 DATAFILE=$TESTDATA_DIR/preupgrade.json npx hardhat test $UPGRADE_TESTPATH --grep "support top-level domain registration"
 
 echo "Test v2 contract separately before deploy"
