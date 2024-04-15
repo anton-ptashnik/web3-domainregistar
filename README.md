@@ -37,5 +37,6 @@ High-level test scenario:
 6. Verify data populated to v1 is available for v2
 7. Verify v2 preserved v1 functionality - top level domain registration
 8. Verify v2 supports subdomain registration
+9. Verify withdrawal returns coins earned for all subdomains registered under owner's domain
 
   *Note here test network means Hardhat network that auto-starts/stops when running tests, while live network means a network instance run locally by `hardhat node`.*
