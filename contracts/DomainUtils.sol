@@ -19,7 +19,7 @@ library DomainUtils {
         address payable owner;
 
         /// @notice Price payed for domain registration
-        uint weiDomainPrice;
+        uint256 weiDomainPrice;
 
         /// @notice Domain name
         string domainName;
@@ -35,7 +35,7 @@ library DomainUtils {
         bytes1 nine = bytes1("9");
         bytes1 dot = bytes1(".");
         bytes memory _bytes = bytes(domain);
-        for (uint i = 0; i < _bytes.length; ++i) {
+        for (uint256 i = 0; i < _bytes.length; ++i) {
             if (!(
                 (_bytes[i] >= a && _bytes[i] <= z) ||
                 (_bytes[i] >= zero && _bytes[i] <= nine) ||
@@ -56,7 +56,7 @@ library DomainUtils {
         strings.slice memory delim = ".".toSlice();
         uint8 n = uint8(sl.count(delim) + 1);
         levels = new string[](n);
-        for(uint i = 0; i < n; ++i) {
+        for(uint256 i = 0; i < n; ++i) {
             levels[n-i-1] = sl.split(delim).toString();
         }
     }
@@ -76,10 +76,10 @@ library DomainUtils {
      * @param levels parsed domain fullpath
      * @param targetLevel depth limit 
      */
-    function findDomainEntry(DomainEntry storage self, string[] memory levels, uint targetLevel) internal view returns (DomainEntry storage entry) {
+    function findDomainEntry(DomainEntry storage self, string[] memory levels, uint256 targetLevel) internal view returns (DomainEntry storage entry) {
         entry = self;
         
-        for (uint domainLevel; domainLevel < targetLevel; ++domainLevel) {
+        for (uint256 domainLevel; domainLevel < targetLevel; ++domainLevel) {
             entry = entry.subdomains[levels[domainLevel]];
             if (entry.owner == address(0)) revert ParentDomainDoesNotExists();
         }

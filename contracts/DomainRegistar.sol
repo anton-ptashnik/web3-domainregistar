@@ -7,7 +7,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "./DomainUtils.sol";
 
 error AccessDenied(string description);
-error NotEnoughFunds(uint provided, uint required);
+error NotEnoughFunds(uint256 provided, uint256 required);
 error DuplicateDomain();
 
 
@@ -16,22 +16,18 @@ error DuplicateDomain();
  * @author Me
  */
 contract DomainRegistar is Initializable {
+    // keccak256(abi.encode(uint256(keccak256("DomainRegistar.main")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant MAIN_STORAGE_LOCATION = 0x7b039d00eb6b93db42c4878af000bf4f52751a20d25ae3b0c322c5cf77ae8600;
+
+    using DomainUtils for DomainUtils.DomainEntry;
+
     /// @custom:storage-location erc7201:DomainRegistar.main
     struct MainStorage {
         /// @notice A root entry holding top-level domains
         DomainUtils.DomainEntry rootEntry;
 
         /// @notice Per owner balance payed for registration of subdomains under domains held by the owner  
-        mapping(address => uint) shares;
-    }
-    
-    // keccak256(abi.encode(uint256(keccak256("DomainRegistar.main")) - 1)) & ~bytes32(uint256(0xff));
-    bytes32 private constant MAIN_STORAGE_LOCATION = 0x7b039d00eb6b93db42c4878af000bf4f52751a20d25ae3b0c322c5cf77ae8600;
-    
-    function _getMainStorage() private pure returns (MainStorage storage $) {
-        assembly {
-            $.slot := MAIN_STORAGE_LOCATION
-        }
+        mapping(address => uint256) shares;
     }
 
     /**
@@ -47,11 +43,9 @@ contract DomainRegistar is Initializable {
      * @param newPrice new price in Wei
      * @param oldPrice old price in Wei
      */
-    event PriceChanged(uint newPrice, uint oldPrice);
+    event PriceChanged(uint256 newPrice, uint256 oldPrice);
 
-    using DomainUtils for DomainUtils.DomainEntry;
-
-    function initialize(uint _domainPrice) public initializer {
+    function initialize(uint256 _domainPrice) public initializer {
         MainStorage storage $ = _getMainStorage();
         $.rootEntry.owner = payable(msg.sender);
         $.rootEntry.weiDomainPrice = _domainPrice;
@@ -72,7 +66,7 @@ contract DomainRegistar is Initializable {
     /**
      * Return an actual price for top level domain registration
      */
-    function weiDomainPrice() external view returns (uint) {
+    function weiDomainPrice() external view returns (uint256) {
         return _getMainStorage().rootEntry.weiDomainPrice;
     }
 
@@ -80,7 +74,7 @@ contract DomainRegistar is Initializable {
      * Return price for registration of domains under the specified parent domain
      * @param domainFullpath domain name starting from top-level domain
      */
-    function subdomainPrice(string calldata domainFullpath) external view returns(uint) {
+    function subdomainPrice(string calldata domainFullpath) external view returns(uint256) {
         MainStorage storage $ = _getMainStorage();
         string[] memory domainLevels = DomainUtils.parseDomainLevels(domainFullpath);
         return $.rootEntry.findDomainEntry(domainLevels, domainLevels.length).weiDomainPrice;
@@ -90,7 +84,7 @@ contract DomainRegistar is Initializable {
      * Set a new price for top-level domain registration. Allowed for contract owner only
      * @param newPrice price to be set
      */
-    function updateDomainPrice(uint newPrice) external {
+    function updateDomainPrice(uint256 newPrice) external {
         MainStorage storage $ = _getMainStorage();
         if(msg.sender != $.rootEntry.owner) {
             revert AccessDenied("Domain price can be changed by owner only");
@@ -104,7 +98,7 @@ contract DomainRegistar is Initializable {
      * @param newPrice new domain price
      * @param domainFullpath parent domain name starting from the top-level domain
      */
-    function updateSubdomainPrice(uint newPrice, string calldata domainFullpath) external {
+    function updateSubdomainPrice(uint256 newPrice, string calldata domainFullpath) external {
         MainStorage storage $ = _getMainStorage();
         string[] memory domainLevels = DomainUtils.parseDomainLevels(domainFullpath);
         DomainUtils.DomainEntry storage entry = $.rootEntry.findDomainEntry(domainLevels, domainLevels.length);
@@ -140,14 +134,20 @@ contract DomainRegistar is Initializable {
      * Send all coins to the owner. Allowed for the owner only
      */
     function withdraw() external {
-        MainStorage storage $ = _getMainStorage();
+        mapping(address => uint256) storage shares = _getMainStorage().shares;
 
-        uint balance = $.shares[msg.sender];
-        $.shares[msg.sender] = 0;
+        uint256 balance = shares[msg.sender];
+        shares[msg.sender] = 0;
         payable(msg.sender).transfer(balance);
     }
 
-    function _validatePrice(uint requiredPrice) private view {
+    function _getMainStorage() private pure returns (MainStorage storage $) {
+        assembly {
+            $.slot := MAIN_STORAGE_LOCATION
+        }
+    }
+
+    function _validatePrice(uint256 requiredPrice) private view {
         if(msg.value < requiredPrice) revert NotEnoughFunds(msg.value, requiredPrice);
     }
 
