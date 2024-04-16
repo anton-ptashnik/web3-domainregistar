@@ -3,9 +3,6 @@ pragma solidity ^0.8.24;
 
 import "solidity-stringutils/strings.sol";
 
-error InvalidDomainName();
-error ParentDomainDoesNotExists();
-
 
 /**
  * @title Provides tools for storing and retrieving domain data
@@ -28,7 +25,11 @@ library DomainUtils {
         mapping (string => DomainEntry) subdomains;
     }
 
-    function _validateDomainFullname(string memory domain) private pure {
+    /**
+     * Check if a given string represents a valid domain name
+     * @param domain string to check
+     */
+    function isValidDomainName(string calldata domain) internal pure returns (bool) {
         bytes1 a = bytes1("a");
         bytes1 z = bytes1("z");
         bytes1 zero = bytes1("0");
@@ -40,18 +41,17 @@ library DomainUtils {
                 (_bytes[i] >= a && _bytes[i] <= z) ||
                 (_bytes[i] >= zero && _bytes[i] <= nine) ||
                 _bytes[i] == dot)) {
-                revert InvalidDomainName();
+                return false;
             }
         }
+        return true;
     }
 
     /**
      * Parse domain fullpath and returns an array of domain levels, starting from the top level 
      * @param domain full domain path, like subtwo.sub.top
      */
-    function parseDomainLevels(string memory domain) internal pure returns (string[] memory levels) {
-        _validateDomainFullname(domain);
-
+    function parseDomainLevels(string calldata domain) internal pure returns (string[] memory levels) {
         strings.slice memory sl = domain.toSlice();
         strings.slice memory delim = ".".toSlice();
         uint8 n = uint8(sl.count(delim) + 1);
@@ -59,15 +59,6 @@ library DomainUtils {
         for(uint256 i = 0; i < n; ++i) {
             levels[n-i-1] = sl.split(delim).toString();
         }
-    }
-
-    /**
-     * Checks if a provided domain exists under the self parent domain
-     * @param self DomainEntry
-     * @param subdomain name of the domain to check
-     */
-    function hasSubdomain(DomainEntry storage self, string memory subdomain) internal view returns(bool) {
-        return self.subdomains[subdomain].owner != address(0);
     }
 
     /**
@@ -81,7 +72,15 @@ library DomainUtils {
         
         for (uint256 domainLevel; domainLevel < targetLevel; ++domainLevel) {
             entry = entry.subdomains[levels[domainLevel]];
-            if (entry.owner == address(0)) revert ParentDomainDoesNotExists();
+            if (entry.owner == address(0)) break;
         }
+    }
+
+    /**
+     * Check if a given DomainEntry is registered / owned by anyone
+     * @param self DomainEntry to check
+     */
+    function exists(DomainEntry storage self) internal view returns (bool) {
+        return self.owner != address(0);
     }
 }

@@ -9,6 +9,8 @@ import "./DomainUtils.sol";
 error AccessDenied(string description);
 error NotEnoughFunds(uint256 provided, uint256 required);
 error DuplicateDomain();
+error InvalidDomainName();
+error ParentDomainDoesNotExists();
 
 
 /**
@@ -116,11 +118,14 @@ contract DomainRegistar is Initializable {
     function registerDomain(string calldata domainFullname) external payable {
         MainStorage storage $ = _getMainStorage();
 
+        if(!DomainUtils.isValidDomainName(domainFullname)) revert InvalidDomainName();
         string[] memory domainLevels = DomainUtils.parseDomainLevels(domainFullname);
         string memory newSubdomainName = domainLevels[domainLevels.length - 1];
         DomainUtils.DomainEntry storage parentEntry = $.rootEntry.findDomainEntry(domainLevels, domainLevels.length-1);
-        _validateNewDomain(parentEntry, newSubdomainName);
-        _validatePrice(parentEntry.weiDomainPrice);
+
+        if(!parentEntry.exists()) revert ParentDomainDoesNotExists();
+        if(msg.value < parentEntry.weiDomainPrice) revert NotEnoughFunds(msg.value, parentEntry.weiDomainPrice);
+        if(parentEntry.subdomains[newSubdomainName].exists()) revert DuplicateDomain();
         
         DomainUtils.DomainEntry storage newEntry = parentEntry.subdomains[newSubdomainName];
         newEntry.owner = payable(msg.sender);
@@ -146,13 +151,5 @@ contract DomainRegistar is Initializable {
         assembly {
             $.slot := MAIN_STORAGE_LOCATION
         }
-    }
-
-    function _validatePrice(uint256 requiredPrice) private view {
-        if(msg.value < requiredPrice) revert NotEnoughFunds(msg.value, requiredPrice);
-    }
-
-    function _validateNewDomain(DomainUtils.DomainEntry storage parentEntry, string memory subdomain) private view {
-        if (parentEntry.hasSubdomain(subdomain)) revert DuplicateDomain();
     }
 }
