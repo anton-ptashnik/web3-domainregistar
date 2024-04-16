@@ -4,7 +4,7 @@ LOGS_DIR=logs
 mkdir -p $LOGS_DIR
 
 pprint() {
-    echo -e "\033[104m >> $1\e[0m"
+    echo -e "\e[104m >> $1\e[0m"
 }
 
 pprint "Start Hardhat network"

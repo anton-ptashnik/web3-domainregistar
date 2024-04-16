@@ -138,7 +138,8 @@ contract DomainRegistar is Initializable {
 
         uint256 balance = shares[msg.sender];
         shares[msg.sender] = 0;
-        payable(msg.sender).transfer(balance);
+        (bool ok,) = payable(msg.sender).call{value: balance}("");
+        require(ok, "Withdraw failure");
     }
 
     function _getMainStorage() private pure returns (MainStorage storage $) {
