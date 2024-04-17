@@ -5,12 +5,13 @@ const { anyValue } = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
-describe.only("DomainRegistar", function () {
+describe("DomainRegistar", function () {
   async function deployContract(initialDomainPrice = 6) {
     const [owner, ...otherAccounts] = await ethers.getSigners();
     const factory = await ethers.getContractFactory("DomainRegistar", owner);
 
-    const domainRegistar = await factory.deploy(initialDomainPrice);
+    const domainRegistar = await factory.deploy();
+    await domainRegistar.initialize(initialDomainPrice);
     return { domainRegistar, initialDomainPrice, owner, otherAccounts};
   }
 
@@ -37,13 +38,10 @@ describe.only("DomainRegistar", function () {
 
   describe("Deployment", function () {
     it("Should set the owner and domain price", async function () {
-      const [owner] = await ethers.getSigners();
-      const domainPrice = 6;
-      const factory = await ethers.getContractFactory("DomainRegistar");
-      const domainRegistar = await factory.deploy(domainPrice);
+      const {domainRegistar, owner, initialDomainPrice } = await deployContract(10);
 
       expect(await domainRegistar.owner()).to.equal(owner.address);
-      expect(await domainRegistar.weiDomainPrice()).to.equal(domainPrice);
+      expect(await domainRegistar.weiDomainPrice()).to.equal(initialDomainPrice);
     });
   });
 
