@@ -66,6 +66,29 @@ describe("DomainRegistar", function () {
         .to.be.revertedWithCustomError(domainRegistar, "AccessDenied");
       expect(await domainRegistarNonOwner.weiDomainPrice()).to.equal(initialDomainPrice);
     });
+
+    it("Should set a new subdomain price on domain owner request", async function () {
+      const { domainRegistar, initialDomainPrice, otherAccounts } = await loadFixture(deployContract);
+
+      const domainName0 = "domain";
+      const domainName1 = "sub.domain";
+      const contractOwnerPrice = initialDomainPrice;
+
+      const domainOwner0 = otherAccounts[0]
+      const domainRegistar0 = domainRegistar.connect(domainOwner0);
+      const domainPrice0 = initialDomainPrice+1000;
+      await expect(domainRegistar0.registerDomain(domainName0, {value: contractOwnerPrice}))
+      .to.emit(domainRegistar, "DomainRegistered").withArgs(anyValue, domainOwner0.address, domainName0);
+      
+      await expect(domainRegistar0.updateSubdomainPrice(domainPrice0, domainName0))
+      .to.emit(domainRegistar, "PriceChanged").withArgs(domainPrice0, initialDomainPrice);
+      expect(await domainRegistar.subdomainPrice(domainName0)).to.equal(domainPrice0);
+
+      const domainOwner1 = otherAccounts[1]
+      const domainRegistar1 = domainRegistar.connect(domainOwner1);
+      await expect(domainRegistar1.registerDomain(domainName1, {value: domainPrice0}))
+      .to.emit(domainRegistar, "DomainRegistered").withArgs(anyValue, domainOwner1.address, domainName1);
+    });
   });
 
   describe("Domain registration", function () {
@@ -108,14 +131,7 @@ describe("DomainRegistar", function () {
       await expect(domainRegistar.registerDomain("hidomain", {value: initialDomainPrice-1}))
         .to.revertedWithCustomError(domainRegistar, "NotEnoughFunds");
     });
-
-    it("Should refuse registration of nested domains", async function () {
-      const { domainRegistar, initialDomainPrice } = await loadFixture(deployContract);
-      const domainName = "sub.domain";
-      await expect(domainRegistar.registerDomain(domainName, {value: initialDomainPrice}))
-        .to.be.revertedWithCustomError(domainRegistar, "TopLevelDomainsOnly");
-    });
-
+    
     it.skip("Should scale", async function () {
       this.timeout(120000);
       const { domainRegistar, initialDomainPrice, owner } = await loadFixture(deployContract);
@@ -125,8 +141,39 @@ describe("DomainRegistar", function () {
       
       for (let domain of domains) {
         await expect(domainRegistar.registerDomain(domain, coinsMap))
-          .not.to.be.reverted
+        .not.to.be.reverted
       }
+    });
+    
+    it("Should allow subdomains", async function () {
+      const { domainRegistar, initialDomainPrice, owner, otherAccounts } = await loadFixture(deployContract);
+
+      const domainName0 = "domain";
+      const domainName1 = "sub.domain";
+      const domainName2 = "sub.sub.domain";
+      const coinsMap = {value: initialDomainPrice}
+      await expect(domainRegistar.registerDomain(domainName0, coinsMap))
+      .to.emit(domainRegistar, "DomainRegistered")
+      .withArgs(anyValue, owner.address, domainName0);
+      
+      const anotherAccount = otherAccounts[0];
+      const domainRegistarAnotherAccount = domainRegistar.connect(anotherAccount);
+      await expect(domainRegistarAnotherAccount.registerDomain(domainName1, coinsMap))
+      .to.emit(domainRegistar, "DomainRegistered")
+      .withArgs(anyValue, anotherAccount.address, domainName1);
+
+      const anotherAccount2 = otherAccounts[1];
+      const domainRegistarAnotherAccount2 = domainRegistar.connect(anotherAccount2);
+      await expect(domainRegistarAnotherAccount2.registerDomain(domainName2, coinsMap))
+      .to.emit(domainRegistar, "DomainRegistered")
+      .withArgs(anyValue, anotherAccount2.address, domainName2);
+    });
+
+    it("Should refuse registration when parent domain does not exist", async function () {
+      const { domainRegistar, initialDomainPrice } = await loadFixture(deployContract);
+      const domainName = "sub.domain";
+      await expect(domainRegistar.registerDomain(domainName, {value: initialDomainPrice}))
+        .to.be.revertedWithCustomError(domainRegistar, "ParentDomainDoesNotExists");
     });
   });
 
@@ -142,16 +189,35 @@ describe("DomainRegistar", function () {
         .to.changeEtherBalances([domainRegistar, owner], [-domainPrice, domainPrice]);
     });
 
-    it("Should restrict coin withdrawal to an owner only", async function () {
-      const domainPrice = 5000;
-      const {domainRegistar, otherAccounts} = await deployContract(domainPrice);
+    it("Should allow withdrawals for subdomain owners", async function () {
+      const { domainRegistar, initialDomainPrice, owner, otherAccounts } = await loadFixture(deployContract);
 
-      const domainRegistarAccount = domainRegistar.connect(otherAccounts[0]);
-      const nonOwnerAccount = domainRegistar.connect(otherAccounts[1]);
-      await domainRegistarAccount.registerDomain("hidomain", {value: domainPrice});
+      const domainName0 = "domain";
+      const accountDomainRegistar0 = otherAccounts[0];
+      const domainRegistar0 = domainRegistar.connect(accountDomainRegistar0);
+      const subdomains = [...Array(10).keys()].map(i => `sub${i}.domain`);
+      const subdomainPrice = initialDomainPrice + 1000;
+      await expect(domainRegistar0.registerDomain(domainName0, {value: initialDomainPrice}))
+      .to.emit(domainRegistar, "DomainRegistered")
+      .withArgs(anyValue, accountDomainRegistar0.address, domainName0);
       
-      await expect(nonOwnerAccount.withdraw())
-        .to.be.revertedWithCustomError(domainRegistar, "AccessDenied");
+      await domainRegistar0.updateSubdomainPrice(subdomainPrice, domainName0);
+
+      const accountDomainRegistar1 = otherAccounts[0];
+      const domainRegistar1 = domainRegistar.connect(accountDomainRegistar1);
+      for(let domainName of subdomains) {
+        await expect(domainRegistar1.registerDomain(domainName, {value: subdomainPrice}))
+        .to.emit(domainRegistar, "DomainRegistered")
+        .withArgs(anyValue, accountDomainRegistar1.address, domainName);
+      }
+
+      const totalSpentSubdomains = subdomains.length * subdomainPrice;
+      await expect(domainRegistar1.withdraw())
+        .to.changeEtherBalances([domainRegistar, accountDomainRegistar1], [-totalSpentSubdomains, totalSpentSubdomains]);
+
+      const totalSpentTopdomains = initialDomainPrice;
+      await expect(domainRegistar.withdraw())
+        .to.changeEtherBalances([domainRegistar, owner], [-totalSpentTopdomains, totalSpentTopdomains]);
     });
   });
 

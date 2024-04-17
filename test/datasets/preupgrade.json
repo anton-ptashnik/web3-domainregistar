@@ -1,0 +1,22 @@
+[
+    {
+        "domain": "v1top0",
+        "level": 0,
+        "ownerID": 1
+    },
+    {
+        "domain": "v1top1",
+        "level": 0,
+        "ownerID": 1
+    },
+    {
+        "domain": "v1top2",
+        "level": 0,
+        "ownerID": 1
+    },
+    {
+        "domain": "v1top3",
+        "level": 0,
+        "ownerID": 1
+    }
+]
