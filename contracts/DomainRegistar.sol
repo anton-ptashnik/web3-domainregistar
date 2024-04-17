@@ -3,8 +3,8 @@ pragma solidity ^0.8.24;
 
 // Uncomment this line to use console.log
 // import "hardhat/console.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "./DomainUtils.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import  {DomainUtils} from "./DomainUtils.sol";
 
 error AccessDenied(string description);
 error NotEnoughFunds(uint256 provided, uint256 required);
@@ -144,10 +144,13 @@ contract DomainRegistar is Initializable {
         uint256 balance = shares[msg.sender];
         shares[msg.sender] = 0;
         (bool ok,) = payable(msg.sender).call{value: balance}("");
+        // used require for backwards compat with v1 to throw the same error - Error
+        // solhint-disable-next-line gas-custom-errors, custom-errors
         require(ok, "Withdraw failure");
     }
 
     function _getMainStorage() private pure returns (MainStorage storage $) {
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             $.slot := MAIN_STORAGE_LOCATION
         }

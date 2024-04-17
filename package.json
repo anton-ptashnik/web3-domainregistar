@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "hardhat test test/DomainRegistar.js",
-    "test_v1to2_upgrade": "bash ./test/upgrage_check.sh"
+    "test_v1to2_upgrade": "bash ./test/upgrage_check.sh",
+    "stylecheck": "solhint contracts/*"
   },
   "author": "me",
   "license": "ISC",

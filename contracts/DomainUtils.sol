@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
-import "solidity-stringutils/strings.sol";
+import {strings} from "solidity-stringutils/strings.sol";
 
 
 /**
@@ -67,7 +67,8 @@ library DomainUtils {
      * @param levels parsed domain fullpath
      * @param targetLevel depth limit 
      */
-    function findDomainEntry(DomainEntry storage self, string[] memory levels, uint256 targetLevel) internal view returns (DomainEntry storage entry) {
+    function findDomainEntry(DomainEntry storage self, string[] memory levels, uint256 targetLevel)
+        internal view returns (DomainEntry storage entry) {
         entry = self;
         
         for (uint256 domainLevel; domainLevel < targetLevel; ++domainLevel) {
