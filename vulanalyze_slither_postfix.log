@@ -1,0 +1,49 @@
+'npx hardhat clean' running (wd: /home/bman/Documents/dev/sandbox/web3/domainregistar)
+'npx hardhat clean --global' running (wd: /home/bman/Documents/dev/sandbox/web3/domainregistar)
+Problem executing hardhat: WARNING: You are currently using Node.js v21.6.1, which is not supported by Hardhat. This can lead to unexpected behavior. See https://hardhat.org/nodejs-versions
+
+'npx hardhat compile --force' running (wd: /home/bman/Documents/dev/sandbox/web3/domainregistar)
+INFO:Detectors:
+DomainRegistar._getMainStorage() (contracts/DomainRegistar.sol#152-157) uses assembly
+	- INLINE ASM (contracts/DomainRegistar.sol#154-156)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#assembly-usage
+INFO:Detectors:
+3 different versions of Solidity are used:
+	- Version constraint ^0.8.20 is used by:
+ 		- node_modules/@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol#4
+	- Version constraint ^0.8.25 is used by:
+ 		- contracts/DomainRegistar.sol#2
+		- contracts/DomainUtils.sol#2
+	- Version constraint ^0.8.0 is used by:
+ 		- solidity-stringutils/strings.sol#37
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#different-pragma-directives-are-used
+INFO:Detectors:
+Version constraint ^0.8.20 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)
+	- VerbatimInvalidDeduplication
+	- FullInlinerNonExpressionSplitArgumentEvaluationOrder
+	- MissingSideEffectsOnSelectorAccess.
+ It is used by:
+	- node_modules/@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol#4
+Version constraint ^0.8.25 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)
+.
+ It is used by:
+	- contracts/DomainRegistar.sol#2
+	- contracts/DomainUtils.sol#2
+Version constraint ^0.8.0 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)
+	- FullInlinerNonExpressionSplitArgumentEvaluationOrder
+	- MissingSideEffectsOnSelectorAccess
+	- AbiReencodingHeadOverflowWithStaticArrayCleanup
+	- DirtyBytesArrayToStorage
+	- DataLocationChangeInInternalOverride
+	- NestedCalldataArrayAbiReencodingSizeValidation
+	- SignedImmutables
+	- ABIDecodeTwoDimensionalArrayMemory
+	- KeccakCaching.
+ It is used by:
+	- solidity-stringutils/strings.sol#37
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-versions-of-solidity
+INFO:Detectors:
+Low level call in DomainRegistar.withdraw() (contracts/DomainRegistar.sol#141-150):
+	- (ok,None) = address(msg.sender).call{value: balance}() (contracts/DomainRegistar.sol#146)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#low-level-calls
+INFO:Slither:. analyzed (4 contracts with 95 detectors), 6 result(s) found

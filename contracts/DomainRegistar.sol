@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.25;
 
 // Uncomment this line to use console.log
 // import "hardhat/console.sol";
@@ -47,10 +47,10 @@ contract DomainRegistar is Initializable {
      */
     event PriceChanged(uint256 newPrice, uint256 oldPrice);
 
-    function initialize(uint256 _domainPrice) public initializer {
+    function initialize(uint256 domainPrice) public initializer {
         MainStorage storage $ = _getMainStorage();
         $.rootEntry.owner = payable(msg.sender);
-        $.rootEntry.weiDomainPrice = _domainPrice;
+        $.rootEntry.weiDomainPrice = domainPrice;
     }
 
     function reinitialize() public reinitializer(2) {
