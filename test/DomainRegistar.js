@@ -16,7 +16,7 @@ describe("DomainRegistar", function () {
     const factory = await ethers.getContractFactory("DomainRegistar", owner);
     const domainRegistar = await factory.deploy(usdcContract.getAddress(), initialDomainPriceUsdc);
     const initialDomainPrice = Number(await domainRegistar.subdomainPriceWei(""));
-    return { domainRegistar, initialDomainPrice, initialDomainPriceUsdc, owner, otherAccounts};
+    return { domainRegistar, usdcContract, initialDomainPrice, initialDomainPriceUsdc, owner, otherAccounts};
   }
 
   async function deployContractWithData() {
@@ -42,7 +42,7 @@ describe("DomainRegistar", function () {
 
   describe("Deployment", function () {
     it("Should set the owner and domain price", async function () {
-      const {domainRegistar, owner, initialDomainPrice, initialDomainPriceUsdc } = await deployContract(10);
+      const {domainRegistar, owner, initialDomainPrice, initialDomainPriceUsdc } = await loadFixture(deployContract);
 
       expect(await domainRegistar.owner()).to.equal(owner.address);
       expect(await domainRegistar.subdomainPriceWei("")).to.equal(initialDomainPrice);
@@ -99,7 +99,7 @@ describe("DomainRegistar", function () {
 
   describe("Domain registration", function () {
     it("Should allow domain registration for different users", async function () {
-      const { domainRegistar, initialDomainPrice, owner, otherAccounts } = await loadFixture(deployContract);
+      const { domainRegistar, usdcContract, initialDomainPrice, initialDomainPriceUsdc, owner, otherAccounts } = await loadFixture(deployContract);
 
       const domainName = "hidomain";
       const anotherAccount = otherAccounts[0];
@@ -113,6 +113,12 @@ describe("DomainRegistar", function () {
       await expect(anotherDomainRegistar.registerDomain(anotherDomainName, coinsMap))
         .to.emit(anotherDomainRegistar, "DomainRegistered")
         .withArgs(anyValue, anotherAccount.address, anotherDomainName);
+
+      const anotherDomainName2 = "hidomainbest";
+      await usdcContract.approve(domainRegistar.getAddress(), initialDomainPriceUsdc+10000)
+      await expect(domainRegistar.registerDomainUsdc(anotherDomainName2))
+        .to.emit(domainRegistar, "DomainRegistered")
+        .withArgs(anyValue, owner.address, anotherDomainName2);
     });
 
     it("Should refuse same domain registration", async function () {
@@ -132,10 +138,13 @@ describe("DomainRegistar", function () {
     });
 
     it("Should refuse domain registration when not enough coins provided", async function () {
-      const { domainRegistar, initialDomainPrice} = await loadFixture(deployContract);
+      const { domainRegistar, usdcContract, initialDomainPrice, initialDomainPriceUsdc} = await loadFixture(deployContract);
 
       await expect(domainRegistar.registerDomain("hidomain", {value: initialDomainPrice-1}))
         .to.revertedWithCustomError(domainRegistar, "NotEnoughFunds");
+
+      await usdcContract.approve(domainRegistar.getAddress(), initialDomainPriceUsdc-100)
+      await expect(domainRegistar.registerDomainUsdc("hidomain")).to.be.reverted
     });
     
     it.skip("Should scale", async function () {
@@ -185,13 +194,18 @@ describe("DomainRegistar", function () {
 
   describe("Coin withdrawal", function () {
     it("Should send all coins to the owner when requested", async function () {
-      const {owner, domainRegistar, initialDomainPrice, otherAccounts} = await loadFixture(deployContract);
+      const {owner, domainRegistar, usdcContract, initialDomainPrice, initialDomainPriceUsdc, otherAccounts} = await loadFixture(deployContract);
 
       const domainRegistarAnotherAccount = domainRegistar.connect(otherAccounts[0]);
       await domainRegistarAnotherAccount.registerDomain("hidomain", {value: initialDomainPrice});
-      
       await expect(domainRegistar.withdraw())
         .to.changeEtherBalances([domainRegistar, owner], [-initialDomainPrice, initialDomainPrice]);
+
+      await usdcContract.approve(domainRegistar.getAddress(), initialDomainPriceUsdc);
+      await expect(domainRegistar.registerDomainUsdc("hidomain2"))
+        .to.changeTokenBalances(usdcContract, [domainRegistar, owner], [initialDomainPriceUsdc, -initialDomainPriceUsdc]);
+      await expect(domainRegistar.withdrawUsdc())
+        .to.changeTokenBalances(usdcContract, [domainRegistar, owner], [-initialDomainPriceUsdc, initialDomainPriceUsdc]);
     });
 
     it("Should allow withdrawals for subdomain owners", async function () {
