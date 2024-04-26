@@ -6,13 +6,17 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
 describe("DomainRegistar", function () {
-  async function deployContract(initialDomainPrice = 6) {
+  async function deployContract(initialDomainPriceUsdc = 1000000) {
     const [owner, ...otherAccounts] = await ethers.getSigners();
-    const factory = await ethers.getContractFactory("DomainRegistar", owner);
 
-    const domainRegistar = await factory.deploy();
-    await domainRegistar.initialize(initialDomainPrice);
-    return { domainRegistar, initialDomainPrice, owner, otherAccounts};
+    const usdcContractFactory = await ethers.getContractFactory("UsdcToken");
+    const usdcSupply = 99000000;
+    const usdcContract = await usdcContractFactory.deploy(usdcSupply);
+
+    const factory = await ethers.getContractFactory("DomainRegistar", owner);
+    const domainRegistar = await factory.deploy(usdcContract.getAddress(), initialDomainPriceUsdc);
+    const initialDomainPrice = Number(await domainRegistar.subdomainPriceWei(""));
+    return { domainRegistar, initialDomainPrice, initialDomainPriceUsdc, owner, otherAccounts};
   }
 
   async function deployContractWithData() {
@@ -38,25 +42,26 @@ describe("DomainRegistar", function () {
 
   describe("Deployment", function () {
     it("Should set the owner and domain price", async function () {
-      const {domainRegistar, owner, initialDomainPrice } = await deployContract(10);
+      const {domainRegistar, owner, initialDomainPrice, initialDomainPriceUsdc } = await deployContract(10);
 
       expect(await domainRegistar.owner()).to.equal(owner.address);
-      expect(await domainRegistar.weiDomainPrice()).to.equal(initialDomainPrice);
+      expect(await domainRegistar.subdomainPriceWei("")).to.equal(initialDomainPrice);
+      expect(await domainRegistar.subdomainPriceUsdc("")).to.equal(initialDomainPriceUsdc);
     });
   });
 
   describe("Domain price update", function () {
     it("Should set a new domain price on contract owner request", async function () {
-      const { domainRegistar, initialDomainPrice } = await loadFixture(deployContract);
+      const { domainRegistar, initialDomainPriceUsdc } = await loadFixture(deployContract);
 
       const newPrice = 99;
       await expect(domainRegistar.updateDomainPrice(newPrice))
-        .to.emit(domainRegistar, "PriceChanged").withArgs(newPrice, initialDomainPrice);
-      expect(await domainRegistar.weiDomainPrice()).to.equal(newPrice);
+        .to.emit(domainRegistar, "PriceChanged").withArgs(newPrice, initialDomainPriceUsdc);
+      expect(await domainRegistar.subdomainPriceUsdc("")).to.equal(newPrice);
     });
 
     it("Should refuse domain price update for non-owners", async function () {
-      const { domainRegistar, initialDomainPrice, otherAccounts } = await loadFixture(
+      const { domainRegistar, initialDomainPriceUsdc, otherAccounts } = await loadFixture(
         deployContract
       );
       const newPrice = 99;
@@ -64,11 +69,11 @@ describe("DomainRegistar", function () {
 
       await expect(domainRegistarNonOwner.updateDomainPrice(newPrice))
         .to.be.revertedWithCustomError(domainRegistar, "AccessDenied");
-      expect(await domainRegistarNonOwner.weiDomainPrice()).to.equal(initialDomainPrice);
+      expect(await domainRegistarNonOwner.subdomainPriceUsdc("")).to.equal(initialDomainPriceUsdc);
     });
 
     it("Should set a new subdomain price on domain owner request", async function () {
-      const { domainRegistar, initialDomainPrice, otherAccounts } = await loadFixture(deployContract);
+      const { domainRegistar, initialDomainPrice, initialDomainPriceUsdc, otherAccounts } = await loadFixture(deployContract);
 
       const domainName0 = "domain";
       const domainName1 = "sub.domain";
@@ -76,16 +81,17 @@ describe("DomainRegistar", function () {
 
       const domainOwner0 = otherAccounts[0]
       const domainRegistar0 = domainRegistar.connect(domainOwner0);
-      const domainPrice0 = initialDomainPrice+1000;
+      const domainPrice0Usdc = initialDomainPriceUsdc+1000;
       await expect(domainRegistar0.registerDomain(domainName0, {value: contractOwnerPrice}))
       .to.emit(domainRegistar, "DomainRegistered").withArgs(anyValue, domainOwner0.address, domainName0);
       
-      await expect(domainRegistar0.updateSubdomainPrice(domainPrice0, domainName0))
-      .to.emit(domainRegistar, "PriceChanged").withArgs(domainPrice0, initialDomainPrice);
-      expect(await domainRegistar.subdomainPrice(domainName0)).to.equal(domainPrice0);
+      await expect(domainRegistar0.updateSubdomainPrice(domainPrice0Usdc, domainName0))
+      .to.emit(domainRegistar, "PriceChanged").withArgs(domainPrice0Usdc, initialDomainPriceUsdc);
+      expect(await domainRegistar.subdomainPriceUsdc(domainName0)).to.equal(domainPrice0Usdc);
 
       const domainOwner1 = otherAccounts[1]
       const domainRegistar1 = domainRegistar.connect(domainOwner1);
+      const domainPrice0 = await domainRegistar.subdomainPriceWei(domainName0);
       await expect(domainRegistar1.registerDomain(domainName1, {value: domainPrice0}))
       .to.emit(domainRegistar, "DomainRegistered").withArgs(anyValue, domainOwner1.address, domainName1);
     });
@@ -179,39 +185,39 @@ describe("DomainRegistar", function () {
 
   describe("Coin withdrawal", function () {
     it("Should send all coins to the owner when requested", async function () {
-      const domainPrice = 5000;
-      const {owner, domainRegistar, otherAccounts} = await deployContract(domainPrice);
+      const {owner, domainRegistar, initialDomainPrice, otherAccounts} = await loadFixture(deployContract);
 
       const domainRegistarAnotherAccount = domainRegistar.connect(otherAccounts[0]);
-      await domainRegistarAnotherAccount.registerDomain("hidomain", {value: domainPrice});
+      await domainRegistarAnotherAccount.registerDomain("hidomain", {value: initialDomainPrice});
       
       await expect(domainRegistar.withdraw())
-        .to.changeEtherBalances([domainRegistar, owner], [-domainPrice, domainPrice]);
+        .to.changeEtherBalances([domainRegistar, owner], [-initialDomainPrice, initialDomainPrice]);
     });
 
     it("Should allow withdrawals for subdomain owners", async function () {
-      const { domainRegistar, initialDomainPrice, owner, otherAccounts } = await loadFixture(deployContract);
+      const { domainRegistar, initialDomainPrice, initialDomainPriceUsdc, owner, otherAccounts } = await loadFixture(deployContract);
 
       const domainName0 = "domain";
       const accountDomainRegistar0 = otherAccounts[0];
       const domainRegistar0 = domainRegistar.connect(accountDomainRegistar0);
       const subdomains = [...Array(10).keys()].map(i => `sub${i}.domain`);
-      const subdomainPrice = initialDomainPrice + 1000;
+      const subdomainPriceUsdc = initialDomainPriceUsdc + 1000;
       await expect(domainRegistar0.registerDomain(domainName0, {value: initialDomainPrice}))
       .to.emit(domainRegistar, "DomainRegistered")
       .withArgs(anyValue, accountDomainRegistar0.address, domainName0);
       
-      await domainRegistar0.updateSubdomainPrice(subdomainPrice, domainName0);
+      await domainRegistar0.updateSubdomainPrice(subdomainPriceUsdc, domainName0);
+      const subdomainPriceEth = await domainRegistar0.subdomainPriceWei(domainName0);
 
       const accountDomainRegistar1 = otherAccounts[0];
       const domainRegistar1 = domainRegistar.connect(accountDomainRegistar1);
       for(let domainName of subdomains) {
-        await expect(domainRegistar1.registerDomain(domainName, {value: subdomainPrice}))
+        await expect(domainRegistar1.registerDomain(domainName, {value: subdomainPriceEth}))
         .to.emit(domainRegistar, "DomainRegistered")
         .withArgs(anyValue, accountDomainRegistar1.address, domainName);
       }
 
-      const totalSpentSubdomains = subdomains.length * subdomainPrice;
+      const totalSpentSubdomains = BigInt(subdomains.length) * subdomainPriceEth;
       await expect(domainRegistar1.withdraw())
         .to.changeEtherBalances([domainRegistar, accountDomainRegistar1], [-totalSpentSubdomains, totalSpentSubdomains]);
 

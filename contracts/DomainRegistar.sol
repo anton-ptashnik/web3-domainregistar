@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 // Uncomment this line to use console.log
 // import "hardhat/console.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./DomainUtils.sol";
 
 error AccessDenied(string description);
@@ -28,8 +29,17 @@ contract DomainRegistar is Initializable {
         /// @notice A root entry holding top-level domains
         DomainUtils.DomainEntry rootEntry;
 
-        /// @notice Per owner balance payed for registration of subdomains under domains held by the owner  
-        mapping(address => uint256) shares;
+        /// @notice Per owner Eth balance earned for subdomain registrations
+        mapping(address => uint256) ethShares;
+
+        /// @notice Per owner USDC balance earned for subdomain registrations
+        mapping(address => uint256) usdcShares;
+
+        /// @notice USDC token contract used for USDC payments
+        ERC20 usdcTokenContract;
+        
+        /// @notice current Wei to USDC rate used for Eth payments
+        uint256 weiUsdcRate;
     }
 
     /**
@@ -47,15 +57,12 @@ contract DomainRegistar is Initializable {
      */
     event PriceChanged(uint256 newPrice, uint256 oldPrice);
 
-    function initialize(uint256 _domainPrice) public initializer {
+    constructor(address usdcContractAddress, uint256 usdcDomainPrice) {
         MainStorage storage $ = _getMainStorage();
         $.rootEntry.owner = payable(msg.sender);
-        $.rootEntry.weiDomainPrice = _domainPrice;
-    }
-
-    function reinitialize() public reinitializer(2) {
-        MainStorage storage $ = _getMainStorage();
-        $.shares[$.rootEntry.owner] = address(this).balance;
+        $.rootEntry.usdcDomainPrice = usdcDomainPrice;
+        $.usdcTokenContract = ERC20(usdcContractAddress);
+        $.weiUsdcRate = 324046892602;
     }
 
     /**
@@ -66,20 +73,24 @@ contract DomainRegistar is Initializable {
     }
 
     /**
-     * Return an actual price for top level domain registration
+     * Return Wei price for registration of domains under the specified parent domain
+     * @param domainFullpath domain name starting from top-level domain
      */
-    function weiDomainPrice() external view returns (uint256) {
-        return _getMainStorage().rootEntry.weiDomainPrice;
+    function subdomainPriceWei(string calldata domainFullpath) external view returns(uint256) {
+        MainStorage storage $ = _getMainStorage();
+        string[] memory domainLevels = DomainUtils.parseDomainLevels(domainFullpath);
+        uint256 usdcPrice = $.rootEntry.findDomainEntry(domainLevels, domainLevels.length).usdcDomainPrice;
+        return convertUsdcToWei(usdcPrice);
     }
 
     /**
-     * Return price for registration of domains under the specified parent domain
+     * Return Usdc price for registration of domains under the specified parent domain
      * @param domainFullpath domain name starting from top-level domain
      */
-    function subdomainPrice(string calldata domainFullpath) external view returns(uint256) {
+    function subdomainPriceUsdc(string calldata domainFullpath) external view returns(uint256) {
         MainStorage storage $ = _getMainStorage();
         string[] memory domainLevels = DomainUtils.parseDomainLevels(domainFullpath);
-        return $.rootEntry.findDomainEntry(domainLevels, domainLevels.length).weiDomainPrice;
+        return $.rootEntry.findDomainEntry(domainLevels, domainLevels.length).usdcDomainPrice;
     }
 
     /**
@@ -91,8 +102,8 @@ contract DomainRegistar is Initializable {
         if(msg.sender != $.rootEntry.owner) {
             revert AccessDenied("Domain price can be changed by owner only");
         }
-        emit PriceChanged(newPrice, $.rootEntry.weiDomainPrice);
-        $.rootEntry.weiDomainPrice = newPrice;
+        emit PriceChanged(newPrice, $.rootEntry.usdcDomainPrice);
+        $.rootEntry.usdcDomainPrice = newPrice;
     }
 
     /**
@@ -107,15 +118,34 @@ contract DomainRegistar is Initializable {
         if(msg.sender != entry.owner) {
             revert AccessDenied("Domain price can be changed by owner only");
         }
-        emit PriceChanged(newPrice, entry.weiDomainPrice);
-        entry.weiDomainPrice = newPrice;
+        emit PriceChanged(newPrice, entry.usdcDomainPrice);
+        entry.usdcDomainPrice = newPrice;
     }
 
     /**
-     * Register a new domain
+     * Register a new domain paying Eth
      * @param domainFullname domain to register provided as fullpath starting from root: mydomain.lvl1.lvl0
      */
     function registerDomain(string calldata domainFullname) external payable {
+        DomainUtils.DomainEntry storage parentEntry = _registerDomain(domainFullname);
+        MainStorage storage $ = _getMainStorage();
+        uint256 weiPrice = convertUsdcToWei(parentEntry.usdcDomainPrice);
+        if(msg.value < weiPrice) revert NotEnoughFunds(msg.value, weiPrice);
+        $.ethShares[parentEntry.owner] += weiPrice;
+    }
+
+    /**
+     * Register a new domain paying Usdc
+     * @param domainFullname domain to register provided as fullpath starting from root: mydomain.lvl1.lvl0
+     */
+    function registerDomainUsdc(string calldata domainFullname) external {
+        DomainUtils.DomainEntry storage parentEntry = _registerDomain(domainFullname);
+        MainStorage storage $ = _getMainStorage();
+        $.usdcTokenContract.transferFrom(msg.sender, address(this), parentEntry.usdcDomainPrice);
+        $.usdcShares[parentEntry.owner] += parentEntry.usdcDomainPrice;
+    }
+
+    function _registerDomain(string calldata domainFullname) private returns(DomainUtils.DomainEntry storage) {
         MainStorage storage $ = _getMainStorage();
 
         if(!DomainUtils.isValidDomainName(domainFullname)) revert InvalidDomainName();
@@ -124,27 +154,43 @@ contract DomainRegistar is Initializable {
         DomainUtils.DomainEntry storage parentEntry = $.rootEntry.findDomainEntry(domainLevels, domainLevels.length-1);
 
         if(!parentEntry.exists()) revert ParentDomainDoesNotExists();
-        if(msg.value < parentEntry.weiDomainPrice) revert NotEnoughFunds(msg.value, parentEntry.weiDomainPrice);
         if(parentEntry.subdomains[newSubdomainName].exists()) revert DuplicateDomain();
         
         DomainUtils.DomainEntry storage newEntry = parentEntry.subdomains[newSubdomainName];
         newEntry.owner = payable(msg.sender);
         newEntry.domainName = newSubdomainName;
-        newEntry.weiDomainPrice = $.rootEntry.weiDomainPrice;
-        $.shares[parentEntry.owner] += parentEntry.weiDomainPrice;
+        newEntry.usdcDomainPrice = $.rootEntry.usdcDomainPrice;
+
         emit DomainRegistered(msg.sender, msg.sender, domainFullname);
+        return parentEntry;
+    }
+
+    function convertUsdcToWei(uint256 usdcPrice) private view returns(uint256) {
+        uint weiUsdcRate = _getMainStorage().weiUsdcRate;
+        return usdcPrice*weiUsdcRate/1000000;
     }
 
     /**
-     * Send all coins to the owner. Allowed for the owner only
+     * Send all Eth coins to the owner
      */
     function withdraw() external {
-        mapping(address => uint256) storage shares = _getMainStorage().shares;
+        mapping(address => uint256) storage shares = _getMainStorage().ethShares;
 
         uint256 balance = shares[msg.sender];
         shares[msg.sender] = 0;
         (bool ok,) = payable(msg.sender).call{value: balance}("");
         require(ok, "Withdraw failure");
+    }
+
+    /**
+     * Send all Usdc coins to the owner
+     */
+    function withdrawUsdc() external {
+        MainStorage storage $ = _getMainStorage();
+
+        uint256 balance = $.usdcShares[msg.sender];
+        $.usdcShares[msg.sender] = 0;
+        $.usdcTokenContract.transfer(msg.sender, balance);
     }
 
     function _getMainStorage() private pure returns (MainStorage storage $) {
