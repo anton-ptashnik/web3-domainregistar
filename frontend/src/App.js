@@ -1,5 +1,3 @@
-// import './App.css';
-
 import * as React from 'react';
 import Stack from '@mui/material/Stack';
 import Divider from '@mui/material/Divider';
@@ -56,11 +54,22 @@ function ContractApp() {
     alert(`buying ${domainName} for ${currency}`)
   }
 
-  function handleOwnerResolution(domainName) {
-    alert(`resolving owner of ${domainName}`)
+  async function handleOwnerResolution(domainName) {
+    const owner = await contract.domainOwner(domainName);
+    if (owner!=0) {
+      alert(`Owner of ${domainName} is ${owner}`)
+    } else {
+      alert(`Domain ${domainName} does not exist`)
+    }
   }
-  function handleEarningsCheck(ownerAddress) {
-    alert(`reading earnings of ${ownerAddress}`);
+  async function handleEarningsCheck(ownerAddress) {
+    try {
+      const ethBalance = await contract.domainOwnerEarningsEth(ownerAddress);
+      const usdcBalance = await contract.domainOwnerEarningsUsdc(ownerAddress);
+      alert(`Earnings of ${ownerAddress}: ETH=${ethBalance}, USDC=${usdcBalance}`);
+    } catch (err) {
+      alert(err.message);
+    }
   }
   function handleEarningsWithdrawal(currency) {
     alert(`withdrawing ${currency}`);
