@@ -8,7 +8,7 @@ import Box from '@mui/material/Box';
 import { DataGrid, GridToolbar } from '@mui/x-data-grid';
 
 
-function DomainRegistration() {
+function DomainRegistration({onRequest}) {
     const [currency, setCurrency] = React.useState('ETH');
     const [domainName, setDomainName] = React.useState('new.domain');
 
@@ -18,6 +18,9 @@ function DomainRegistration() {
     function handleCurrencyChange(_event, newValue) {
         setCurrency(newValue);
     };
+    function handleSubmit() {
+        onRequest(domainName, currency);
+    }
 
     return (
         <Stack direction="row" spacing={2}>
@@ -31,38 +34,56 @@ function DomainRegistration() {
                 <ToggleButton value="ETH">ETH</ToggleButton>
                 <ToggleButton value="USDC">USDC</ToggleButton>
             </ToggleButtonGroup>
-            <Button variant='contained'>Register</Button>
+            <Button variant='contained' onClick={handleSubmit}>Register</Button>
         </Stack>
     );
 }
 
-function DomainOwnerResolution() {
+function DomainOwnerResolution({onRequest}) {
     const [domainName, setDomainName] = React.useState('existing.domain');
 
+    function handleClick() {
+        onRequest(domainName);
+    }
+    function handleDomainNameChange(e) {
+        setDomainName(e.target.value);
+    }
+
     return (
         <Stack direction="row" spacing={2}>
-            <TextField id="findOwner" value={domainName} label="Domain name" variant="outlined" required />
-            <Button variant='contained'>Find</Button>
+            <TextField id="findOwner" value={domainName} onChange={handleDomainNameChange} label="Domain name" variant="outlined" required />
+            <Button variant='contained' onClick={handleClick}>Find</Button>
         </Stack>
     );
 }
 
-function ControllerEarningsCheck() {
+function ControllerEarningsCheck({onRequest}) {
     const [controllerAddress, setControllerAddress] = React.useState('0x1111111111111111');
 
+    function onClick() {
+        onRequest(controllerAddress);
+    }
+    function handleAddressChange(e) {
+        setControllerAddress(e.target.value);
+    }
+
     return (
         <Stack direction="row" spacing={2}>
-            <TextField id="controllerAddress" value={controllerAddress} label="Controller address" variant="outlined" required />
-            <Button variant='contained'>Check</Button>
+            <TextField id="controllerAddress" value={controllerAddress} onChange={handleAddressChange} label="Controller address" variant="outlined" required />
+            <Button variant='contained' onClick={onClick}>Check</Button>
         </Stack>
     );
 }
 
-function EarningsWithdrawal() {
+function EarningsWithdrawal({onRequest}) {
+    function handleClick(e) {
+        onRequest(e.target.id);
+    }
+
     return (
         <Stack direction="row" spacing={4}>
-            <Button variant='contained'>Withdraw ETH</Button>
-            <Button variant='contained'>Withdraw USDC</Button>
+            <Button id='ETH' onClick={handleClick} variant='contained'>Withdraw ETH</Button>
+            <Button id='USDC' onClick={handleClick} variant='contained'>Withdraw USDC</Button>
         </Stack>
     );
 }

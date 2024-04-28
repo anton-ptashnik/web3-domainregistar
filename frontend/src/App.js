@@ -12,19 +12,33 @@ function App() {
     // alert(`${currency} : ${domain}`);
   }
 
+  function handleDomainRegistration(domainName, currency) {
+    alert(`buying ${domainName} for ${currency}`)
+  }
+
+  function handleOwnerResolution(domainName) {
+    alert(`resolving owner of ${domainName}`)
+  }
+  function handleEarningsCheck(ownerAddress) {
+    alert(`reading earnings of ${ownerAddress}`);
+  }
+  function handleEarningsWithdrawal(currency) {
+    alert(`withdrawing ${currency}`);
+  }
+
   return (
     <Stack direction="column" spacing={2} justifyContent="center" alignItems="center" >
       <Divider flexItem>Register a new domain</Divider>
-      <DomainRegistration/>
+      <DomainRegistration onRequest={handleDomainRegistration}/>
 
       <Divider flexItem>Find domain owner</Divider>
-      <DomainOwnerResolution/>
+      <DomainOwnerResolution onRequest={handleOwnerResolution}/>
 
       <Divider flexItem>Check controller earnings</Divider>
-      <ControllerEarningsCheck/>
+      <ControllerEarningsCheck onRequest={handleEarningsCheck}/>
 
       <Divider flexItem>Withdraw earnings</Divider>
-      <EarningsWithdrawal/>
+      <EarningsWithdrawal onRequest={handleEarningsWithdrawal}/>
 
       <Divider flexItem>Realtime registration events</Divider>
       <RegistrationHistory/>
