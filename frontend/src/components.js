@@ -6,9 +6,13 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Stack from '@mui/material/Stack';
 import Box from '@mui/material/Box';
 import { DataGrid, GridToolbar } from '@mui/x-data-grid';
+import MenuItem from '@mui/material/MenuItem';
+import Select from '@mui/material/Select';
+import FormHelperText from '@mui/material/FormHelperText';
+import FormControl from '@mui/material/FormControl';
 
 
-function DomainRegistration({onRequest}) {
+function DomainRegistration({ onRequest }) {
     const [currency, setCurrency] = React.useState('ETH');
     const [domainName, setDomainName] = React.useState('new.domain');
 
@@ -39,7 +43,7 @@ function DomainRegistration({onRequest}) {
     );
 }
 
-function DomainOwnerResolution({onRequest}) {
+function DomainOwnerResolution({ onRequest }) {
     const [domainName, setDomainName] = React.useState('existing.domain');
 
     function handleClick() {
@@ -57,7 +61,7 @@ function DomainOwnerResolution({onRequest}) {
     );
 }
 
-function ControllerEarningsCheck({onRequest}) {
+function ControllerEarningsCheck({ onRequest }) {
     const [controllerAddress, setControllerAddress] = React.useState('0x1111111111111111');
 
     function onClick() {
@@ -75,7 +79,7 @@ function ControllerEarningsCheck({onRequest}) {
     );
 }
 
-function EarningsWithdrawal({onRequest}) {
+function EarningsWithdrawal({ onRequest }) {
     function handleClick(e) {
         onRequest(e.target.id);
     }
@@ -131,4 +135,51 @@ function RegistrationHistory() {
     );
 }
 
-export { DomainRegistration, DomainOwnerResolution, ControllerEarningsCheck, EarningsWithdrawal, RegistrationHistory };
+function MetamaskConnection({ onConnect, onAccountSelected }) {
+    const [accounts, setAccounts] = React.useState([])
+    const [selectedAccount, setSelectedAccount] = React.useState(null)
+
+    async function handleClick(e) {
+        const accounts = await onConnect();
+        if (accounts==null) {
+            return;
+        }
+        setAccounts(accounts);
+        setSelectedAccount(accounts[0]);
+        onAccountSelected(accounts[0]);
+    }
+    function handleChange(event) {
+        setSelectedAccount(event.target.value);
+        onAccountSelected(event.target.value);
+    };
+
+    const selectItems = accounts.map(acc => <MenuItem value={acc}>{acc}</MenuItem>)
+    const isConnected = accounts.length > 0;
+    return (
+        <Stack direction="row" spacing={4}>
+            {isConnected
+                ?
+                <FormControl>
+                    <Select
+                        id="account-select"
+                        labelId="account-select-label"
+                        value={selectedAccount}
+                        label="Account"
+                        onChange={handleChange}
+                        >
+                        {selectItems}
+                    </Select>
+                    <FormHelperText>Select an account for countract interaction</FormHelperText>
+                </FormControl>
+                :
+                <Button id='connect' onClick={handleClick}
+                    disabled={selectedAccount != null}
+                    variant='contained'>
+                    Connect to Metamask
+                </Button>
+            }
+        </Stack>
+    );
+}
+
+export { DomainRegistration, DomainOwnerResolution, ControllerEarningsCheck, EarningsWithdrawal, RegistrationHistory, MetamaskConnection };
