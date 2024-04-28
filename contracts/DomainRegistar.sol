@@ -73,6 +73,32 @@ contract DomainRegistar is Initializable {
     }
 
     /**
+     * Return an address of a domain owner
+     * @param domainFullpath domain name starting from top-level domain
+     */
+    function domainOwner(string calldata domainFullpath) external view returns(address) {
+        MainStorage storage $ = _getMainStorage();
+        string[] memory domainLevels = DomainUtils.parseDomainLevels(domainFullpath);
+        return $.rootEntry.findDomainEntry(domainLevels, domainLevels.length).owner;
+    }
+
+    /**
+     * Return number of ETH earned by a given domain owner
+     * @param domainOwner owner account address
+     */
+    function domainOwnerEarningsEth(address domainOwner) external view returns(uint256) {
+        return _getMainStorage().ethShares[domainOwner];
+    }
+
+    /**
+     * Return number of USDC earned by a given domain owner
+     * @param domainOwner owner account address
+     */
+    function domainOwnerEarningsUsdc(address domainOwner) external view returns(uint256) {
+        return _getMainStorage().usdcShares[domainOwner];
+    }
+
+    /**
      * Return Wei price for registration of domains under the specified parent domain
      * @param domainFullpath domain name starting from top-level domain
      */
