@@ -25,6 +25,8 @@ if (isMetamaskFound) {
 }
 
 
+let didInit = false;
+
 function ContractApp() {
   async function handleConnect() {
     try {
@@ -50,8 +52,25 @@ function ContractApp() {
     window.selectedAccount = account;
   }
 
-  function handleDomainRegistration(domainName, currency) {
-    alert(`buying ${domainName} for ${currency}`)
+  async function handleDomainRegistration(domainName, currency) {
+    const signer = await provider.getSigner(window.selectedAccount);
+    const contractConn = contract.connect(signer);
+    let tx;
+    try {
+      if (currency=="ETH") {
+        const firstDot = domainName.indexOf(".");
+        const parentDomain = firstDot > 0 ? domainName.substr(firstDot+1) : "";
+        const priceWei = await contractConn.subdomainPriceWei(parentDomain);
+        tx = await contractConn.registerDomain(domainName, {value: priceWei});
+      } else {
+        // tx = await contractConn.registerDomainUsdc(domainName);
+        alert("Not impl");
+        return;
+      }
+      await tx.wait();
+    } catch(err) {
+      alert(err.message);
+    }
   }
 
   async function handleOwnerResolution(domainName) {
@@ -62,6 +81,7 @@ function ContractApp() {
       alert(`Domain ${domainName} does not exist`)
     }
   }
+
   async function handleEarningsCheck(ownerAddress) {
     try {
       const ethBalance = await contract.domainOwnerEarningsEth(ownerAddress);
@@ -71,9 +91,29 @@ function ContractApp() {
       alert(err.message);
     }
   }
+
   function handleEarningsWithdrawal(currency) {
     alert(`withdrawing ${currency}`);
   }
+
+  const [history, setHistory] = React.useState([]);
+  React.useEffect(() => {
+    if (didInit) return;
+    didInit = true;
+    async function updateHistory() {
+      const allRegistrationsFilter = contract.filters.DomainRegistered();
+      const logs = await contract.queryFilter(allRegistrationsFilter, 0, "latest");
+      const timeNow = Date.now();
+      const __history = logs.map((log, i) => ({
+         id: log.args.domain+log.args.owner, timestamp: timeNow, domain: log.args.domain, controller: log.args.owner 
+      }));
+      setHistory(__history);
+      contract.on("DomainRegistered", (_, owner, domain) => {
+        setHistory(_history => _history.concat({ id: domain+owner, timestamp: Date.now(), domain: domain, controller: owner }))
+      })
+    }
+    updateHistory();
+  }, []);
 
   return (
     <Stack direction="column" spacing={2} justifyContent="center" alignItems="center" >
@@ -93,7 +133,7 @@ function ContractApp() {
       <EarningsWithdrawal onRequest={handleEarningsWithdrawal}/>
 
       <Divider flexItem>Realtime registration events</Divider>
-      <RegistrationHistory/>
+      <RegistrationHistory history={history}/>
     </Stack>
   );
 }

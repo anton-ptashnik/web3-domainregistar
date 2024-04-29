@@ -94,36 +94,28 @@ function EarningsWithdrawal({ onRequest }) {
 
 
 const columns = [
-    { field: 'id', headerName: 'ID', width: 70 },
-    { field: 'domain', headerName: 'Domain', width: 220 },
-    { field: 'controller', headerName: 'Controller', width: 280 },
+    { field: 'id', headerName: 'ID' },
+    { field: 'timestamp', headerName: 'Timestamp', flex: 0.2 },
+    { field: 'domain', headerName: 'Domain', flex: 0.4 },
+    { field: 'controller', headerName: 'Controller', flex: 0.4 },
 ];
 
-const _rows = [
-    { id: 1, domain: 'Snow', controller: 'Jon' },
-    { id: 2, domain: 'Lannister', controller: 'Cersei' },
-    { id: 3, domain: 'Lannister', controller: 'Jaime' },
-    { id: 4, domain: 'Stark', controller: 'Arya' },
-    { id: 5, domain: 'Stark', controller: 'Arya' },
-    { id: 6, domain: 'Stark', controller: 'Arya' },
-    { id: 7, domain: 'Stark', controller: 'Arya' },
-    // { id: 5, lastName: 'Targaryen', firstName: 'Daenerys', age: null },
-    // { id: 6, lastName: 'Melisandre', firstName: null, age: 150 },
-];
-
-function RegistrationHistory() {
-    const [rows, setRows] = React.useState([]);
-    function handleClickInsert() {
-        setRows(_rows.slice(0, rows.length + 1));
-    }
-
+function RegistrationHistory({ history }) {
     return (
         <Box height={400} sx={{ width: '70%' }}>
-            <Button variant='contained' onClick={handleClickInsert}>Insert</Button>
             <DataGrid
-                rows={rows}
+                disableColumnSelector
+                rows={history}
                 columns={columns}
                 initialState={{
+                    columns: {
+                        columnVisibilityModel: {
+                            id: false,
+                        },
+                    },
+                    sorting: {
+                        sortModel: [{ field: 'timestamp', sort: 'asc' }],
+                    },
                     pagination: {
                         paginationModel: { page: 0, pageSize: 5 },
                     },
@@ -141,7 +133,7 @@ function MetamaskConnection({ onConnect, onAccountSelected }) {
 
     async function handleClick(e) {
         const accounts = await onConnect();
-        if (accounts==null) {
+        if (accounts == null) {
             return;
         }
         setAccounts(accounts);
@@ -166,7 +158,7 @@ function MetamaskConnection({ onConnect, onAccountSelected }) {
                         value={selectedAccount}
                         label="Account"
                         onChange={handleChange}
-                        >
+                    >
                         {selectItems}
                     </Select>
                     <FormHelperText>Select an account for countract interaction</FormHelperText>
