@@ -1,6 +1,7 @@
 import * as React from 'react';
 import Stack from '@mui/material/Stack';
 import Divider from '@mui/material/Divider';
+import Typography from '@mui/material/Typography';
 import {
   DomainRegistration, DomainOwnerResolution, ControllerEarningsCheck,
   EarningsWithdrawal, RegistrationHistory, MetamaskConnection
@@ -14,12 +15,12 @@ const isMetamaskFound = ethereum && ethereum.isMetaMask;
 let App, provider, contract;
 if (isMetamaskFound) {
   App = ContractApp;
-  provider = new ethers.BrowserProvider(window.ethereum)
+  provider = new ethers.BrowserProvider(window.ethereum);
   contract = new ethers.Contract(
     process.env.REACT_APP_CONTRACT_ADDRESS,
     abiFile.abi,
     provider
-  )
+  );
 } else {
   App = MetamaskMissingApp;
 }
@@ -52,16 +53,16 @@ function ContractApp() {
     window.selectedAccount = account;
   }
 
-  async function handleDomainRegistration(domainName, currency) {
+  async function handleDomainRegistration(domainName, subdomainPriceUsdc, purchaseCurrency) {
     const signer = await provider.getSigner(window.selectedAccount);
     const contractConn = contract.connect(signer);
     let tx;
     try {
-      if (currency=="ETH") {
+      if (purchaseCurrency=="ETH") {
         const firstDot = domainName.indexOf(".");
         const parentDomain = firstDot > 0 ? domainName.substr(firstDot+1) : "";
         const priceWei = await contractConn.subdomainPriceWei(parentDomain);
-        tx = await contractConn.registerDomain(domainName, {value: priceWei});
+        tx = await contractConn.registerDomain(domainName, subdomainPriceUsdc, {value: priceWei});
       } else {
         // tx = await contractConn.registerDomainUsdc(domainName);
         alert("Not impl");
@@ -117,6 +118,11 @@ function ContractApp() {
 
   return (
     <Stack direction="column" spacing={2} justifyContent="center" alignItems="center" >
+      <Divider flexItem>Contract address</Divider>
+      <Typography variant="body1" gutterBottom>
+        <b>DomainRegistar:</b> {process.env.REACT_APP_CONTRACT_ADDRESS} <b>USDC:</b> {process.env.REACT_APP_USDC_CONTRACT_ADDRESS}
+      </Typography>
+
       <Divider flexItem>Connect to the Domain Registar</Divider>
       <MetamaskConnection onConnect={handleConnect} onAccountSelected={handleAccountSelected}/>
 

@@ -33,7 +33,7 @@ describe("DomainRegistar", function () {
 
       const contract = deploymentData.domainRegistar.connect(owner);
       for(let domainName of ownerDomains) {
-        await contract.registerDomain(domainName, {value: deploymentData.initialDomainPrice});
+        await contract.registerDomain(domainName, deploymentData.initialDomainPriceUsdc, {value: deploymentData.initialDomainPrice});
       }
     }
 
@@ -82,7 +82,7 @@ describe("DomainRegistar", function () {
       const domainOwner0 = otherAccounts[0]
       const domainRegistar0 = domainRegistar.connect(domainOwner0);
       const domainPrice0Usdc = initialDomainPriceUsdc+1000;
-      await expect(domainRegistar0.registerDomain(domainName0, {value: contractOwnerPrice}))
+      await expect(domainRegistar0.registerDomain(domainName0, initialDomainPriceUsdc, {value: contractOwnerPrice}))
       .to.emit(domainRegistar, "DomainRegistered").withArgs(anyValue, domainOwner0.address, domainName0);
       
       await expect(domainRegistar0.updateSubdomainPrice(domainPrice0Usdc, domainName0))
@@ -92,7 +92,7 @@ describe("DomainRegistar", function () {
       const domainOwner1 = otherAccounts[1]
       const domainRegistar1 = domainRegistar.connect(domainOwner1);
       const domainPrice0 = await domainRegistar.subdomainPriceWei(domainName0);
-      await expect(domainRegistar1.registerDomain(domainName1, {value: domainPrice0}))
+      await expect(domainRegistar1.registerDomain(domainName1, initialDomainPriceUsdc, {value: domainPrice0}))
       .to.emit(domainRegistar, "DomainRegistered").withArgs(anyValue, domainOwner1.address, domainName1);
     });
   });
@@ -104,47 +104,59 @@ describe("DomainRegistar", function () {
       const domainName = "hidomain";
       const anotherAccount = otherAccounts[0];
       const coinsMap = {value: initialDomainPrice}
-      await expect(domainRegistar.registerDomain(domainName, coinsMap))
+      await expect(domainRegistar.registerDomain(domainName, initialDomainPriceUsdc, coinsMap))
         .to.emit(domainRegistar, "DomainRegistered")
         .withArgs(anyValue, owner.address, domainName);
 
       const anotherDomainName = "hidomain2";
       const anotherDomainRegistar = domainRegistar.connect(anotherAccount)
-      await expect(anotherDomainRegistar.registerDomain(anotherDomainName, coinsMap))
+      await expect(anotherDomainRegistar.registerDomain(anotherDomainName, initialDomainPriceUsdc, coinsMap))
         .to.emit(anotherDomainRegistar, "DomainRegistered")
         .withArgs(anyValue, anotherAccount.address, anotherDomainName);
 
       const anotherDomainName2 = "hidomainbest";
       await usdcContract.approve(domainRegistar.getAddress(), initialDomainPriceUsdc+10000)
-      await expect(domainRegistar.registerDomainUsdc(anotherDomainName2))
+      await expect(domainRegistar.registerDomainUsdc(anotherDomainName2, initialDomainPriceUsdc))
         .to.emit(domainRegistar, "DomainRegistered")
         .withArgs(anyValue, owner.address, anotherDomainName2);
     });
 
     it("Should refuse same domain registration", async function () {
-      const { domainRegistar, initialDomainPrice, owner, otherAccounts } = await loadFixture(deployContract);
+      const { domainRegistar, initialDomainPrice, initialDomainPriceUsdc, owner, otherAccounts } = await loadFixture(deployContract);
       const domainName = "hidomain";
       const anotherDomainRegistar = domainRegistar.connect(otherAccounts[0])
       const coinsMap = {value: initialDomainPrice}
 
-      await expect(domainRegistar.registerDomain(domainName, coinsMap))
+      await expect(domainRegistar.registerDomain(domainName, initialDomainPriceUsdc, coinsMap))
         .to.emit(domainRegistar, "DomainRegistered")
         .withArgs(anyValue, owner.address, domainName);
 
-      await expect(domainRegistar.registerDomain(domainName, coinsMap))
+      await expect(domainRegistar.registerDomain(domainName, initialDomainPriceUsdc, coinsMap))
         .to.be.revertedWithCustomError(domainRegistar, "DuplicateDomain");
-      await expect(anotherDomainRegistar.registerDomain(domainName, coinsMap))
+      await expect(anotherDomainRegistar.registerDomain(domainName, initialDomainPriceUsdc, coinsMap))
         .to.be.revertedWithCustomError(domainRegistar, "DuplicateDomain");
     });
 
     it("Should refuse domain registration when not enough coins provided", async function () {
-      const { domainRegistar, usdcContract, initialDomainPrice, initialDomainPriceUsdc} = await loadFixture(deployContract);
+      const { domainRegistar, usdcContract, initialDomainPrice, initialDomainPriceUsdc, owner } = await loadFixture(deployContract);
 
-      await expect(domainRegistar.registerDomain("hidomain", {value: initialDomainPrice-1}))
+      await expect(domainRegistar.registerDomain("hidomain", initialDomainPriceUsdc, {value: initialDomainPrice-1}))
         .to.revertedWithCustomError(domainRegistar, "NotEnoughFunds");
 
       await usdcContract.approve(domainRegistar.getAddress(), initialDomainPriceUsdc-100)
-      await expect(domainRegistar.registerDomainUsdc("hidomain")).to.be.reverted
+      await expect(domainRegistar.registerDomainUsdc("hidomain", initialDomainPriceUsdc)).to.be.reverted
+
+      const newDomainPrice = 2000000
+      await expect(domainRegistar.registerDomain("topdomain", newDomainPrice, {value: initialDomainPrice}))
+        .to.be.ok
+
+      await expect(domainRegistar.registerDomain("sub.topdomain", initialDomainPriceUsdc, {value: initialDomainPrice}))
+        .to.revertedWithCustomError(domainRegistar, "NotEnoughFunds");
+      
+      await usdcContract.approve(domainRegistar.getAddress(), newDomainPrice);
+      await expect(domainRegistar.registerDomainUsdc("sub.topdomain", newDomainPrice-10))
+        .to.emit(domainRegistar, "DomainRegistered")
+        .withArgs(anyValue, owner.address, "sub.topdomain");
     });
     
     it.skip("Should scale", async function () {
@@ -161,25 +173,25 @@ describe("DomainRegistar", function () {
     });
     
     it("Should allow subdomains", async function () {
-      const { domainRegistar, initialDomainPrice, owner, otherAccounts } = await loadFixture(deployContract);
+      const { domainRegistar, initialDomainPrice, initialDomainPriceUsdc, owner, otherAccounts } = await loadFixture(deployContract);
 
       const domainName0 = "domain";
       const domainName1 = "sub.domain";
       const domainName2 = "sub.sub.domain";
       const coinsMap = {value: initialDomainPrice}
-      await expect(domainRegistar.registerDomain(domainName0, coinsMap))
+      await expect(domainRegistar.registerDomain(domainName0, initialDomainPriceUsdc, coinsMap))
       .to.emit(domainRegistar, "DomainRegistered")
       .withArgs(anyValue, owner.address, domainName0);
       
       const anotherAccount = otherAccounts[0];
       const domainRegistarAnotherAccount = domainRegistar.connect(anotherAccount);
-      await expect(domainRegistarAnotherAccount.registerDomain(domainName1, coinsMap))
+      await expect(domainRegistarAnotherAccount.registerDomain(domainName1, initialDomainPriceUsdc, coinsMap))
       .to.emit(domainRegistar, "DomainRegistered")
       .withArgs(anyValue, anotherAccount.address, domainName1);
 
       const anotherAccount2 = otherAccounts[1];
       const domainRegistarAnotherAccount2 = domainRegistar.connect(anotherAccount2);
-      await expect(domainRegistarAnotherAccount2.registerDomain(domainName2, coinsMap))
+      await expect(domainRegistarAnotherAccount2.registerDomain(domainName2, initialDomainPriceUsdc, coinsMap))
       .to.emit(domainRegistar, "DomainRegistered")
       .withArgs(anyValue, anotherAccount2.address, domainName2);
     });
@@ -187,7 +199,7 @@ describe("DomainRegistar", function () {
     it("Should refuse registration when parent domain does not exist", async function () {
       const { domainRegistar, initialDomainPrice } = await loadFixture(deployContract);
       const domainName = "sub.domain";
-      await expect(domainRegistar.registerDomain(domainName, {value: initialDomainPrice}))
+      await expect(domainRegistar.registerDomain(domainName, initialDomainPrice, {value: initialDomainPrice}))
         .to.be.revertedWithCustomError(domainRegistar, "ParentDomainDoesNotExists");
     });
   });
@@ -197,12 +209,12 @@ describe("DomainRegistar", function () {
       const {owner, domainRegistar, usdcContract, initialDomainPrice, initialDomainPriceUsdc, otherAccounts} = await loadFixture(deployContract);
 
       const domainRegistarAnotherAccount = domainRegistar.connect(otherAccounts[0]);
-      await domainRegistarAnotherAccount.registerDomain("hidomain", {value: initialDomainPrice});
+      await domainRegistarAnotherAccount.registerDomain("hidomain", initialDomainPriceUsdc, {value: initialDomainPrice});
       await expect(domainRegistar.withdraw())
         .to.changeEtherBalances([domainRegistar, owner], [-initialDomainPrice, initialDomainPrice]);
 
       await usdcContract.approve(domainRegistar.getAddress(), initialDomainPriceUsdc);
-      await expect(domainRegistar.registerDomainUsdc("hidomain2"))
+      await expect(domainRegistar.registerDomainUsdc("hidomain2", initialDomainPriceUsdc))
         .to.changeTokenBalances(usdcContract, [domainRegistar, owner], [initialDomainPriceUsdc, -initialDomainPriceUsdc]);
       await expect(domainRegistar.withdrawUsdc())
         .to.changeTokenBalances(usdcContract, [domainRegistar, owner], [-initialDomainPriceUsdc, initialDomainPriceUsdc]);
@@ -216,7 +228,7 @@ describe("DomainRegistar", function () {
       const domainRegistar0 = domainRegistar.connect(accountDomainRegistar0);
       const subdomains = [...Array(10).keys()].map(i => `sub${i}.domain`);
       const subdomainPriceUsdc = initialDomainPriceUsdc + 1000;
-      await expect(domainRegistar0.registerDomain(domainName0, {value: initialDomainPrice}))
+      await expect(domainRegistar0.registerDomain(domainName0, initialDomainPriceUsdc, {value: initialDomainPrice}))
       .to.emit(domainRegistar, "DomainRegistered")
       .withArgs(anyValue, accountDomainRegistar0.address, domainName0);
       
@@ -226,7 +238,7 @@ describe("DomainRegistar", function () {
       const accountDomainRegistar1 = otherAccounts[0];
       const domainRegistar1 = domainRegistar.connect(accountDomainRegistar1);
       for(let domainName of subdomains) {
-        await expect(domainRegistar1.registerDomain(domainName, {value: subdomainPriceEth}))
+        await expect(domainRegistar1.registerDomain(domainName, initialDomainPriceUsdc, {value: subdomainPriceEth}))
         .to.emit(domainRegistar, "DomainRegistered")
         .withArgs(anyValue, accountDomainRegistar1.address, domainName);
       }

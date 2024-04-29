@@ -151,9 +151,10 @@ contract DomainRegistar is Initializable {
     /**
      * Register a new domain paying Eth
      * @param domainFullname domain to register provided as fullpath starting from root: mydomain.lvl1.lvl0
+     * @param subdomainPriceUsdc USDC price for subdomain registration
      */
-    function registerDomain(string calldata domainFullname) external payable {
-        DomainUtils.DomainEntry storage parentEntry = _registerDomain(domainFullname);
+    function registerDomain(string calldata domainFullname, uint256 subdomainPriceUsdc) external payable {
+        DomainUtils.DomainEntry storage parentEntry = _registerDomain(domainFullname, subdomainPriceUsdc);
         MainStorage storage $ = _getMainStorage();
         uint256 weiPrice = convertUsdcToWei(parentEntry.usdcDomainPrice);
         if(msg.value < weiPrice) revert NotEnoughFunds(msg.value, weiPrice);
@@ -163,15 +164,16 @@ contract DomainRegistar is Initializable {
     /**
      * Register a new domain paying Usdc
      * @param domainFullname domain to register provided as fullpath starting from root: mydomain.lvl1.lvl0
+     * @param subdomainPriceUsdc USDC price for subdomain registration
      */
-    function registerDomainUsdc(string calldata domainFullname) external {
-        DomainUtils.DomainEntry storage parentEntry = _registerDomain(domainFullname);
+    function registerDomainUsdc(string calldata domainFullname, uint256 subdomainPriceUsdc) external {
+        DomainUtils.DomainEntry storage parentEntry = _registerDomain(domainFullname, subdomainPriceUsdc);
         MainStorage storage $ = _getMainStorage();
         $.usdcTokenContract.transferFrom(msg.sender, address(this), parentEntry.usdcDomainPrice);
         $.usdcShares[parentEntry.owner] += parentEntry.usdcDomainPrice;
     }
 
-    function _registerDomain(string calldata domainFullname) private returns(DomainUtils.DomainEntry storage) {
+    function _registerDomain(string calldata domainFullname, uint256 subdomainPriceUsdc) private returns(DomainUtils.DomainEntry storage) {
         MainStorage storage $ = _getMainStorage();
 
         if(!DomainUtils.isValidDomainName(domainFullname)) revert InvalidDomainName();
@@ -185,7 +187,7 @@ contract DomainRegistar is Initializable {
         DomainUtils.DomainEntry storage newEntry = parentEntry.subdomains[newSubdomainName];
         newEntry.owner = payable(msg.sender);
         newEntry.domainName = newSubdomainName;
-        newEntry.usdcDomainPrice = $.rootEntry.usdcDomainPrice;
+        newEntry.usdcDomainPrice = subdomainPriceUsdc;
 
         emit DomainRegistered(msg.sender, msg.sender, domainFullname);
         return parentEntry;

@@ -15,20 +15,25 @@ import FormControl from '@mui/material/FormControl';
 function DomainRegistration({ onRequest }) {
     const [currency, setCurrency] = React.useState('ETH');
     const [domainName, setDomainName] = React.useState('new.domain');
+    const [subdomainPrice, setSubdomainPrice] = React.useState(1000000);
 
     function handleDomainNameChange(e) {
         setDomainName(e.target.value);
+    }
+    function handleSubdomainPriceChange(e) {
+        setSubdomainPrice(e.target.value);
     }
     function handleCurrencyChange(_event, newValue) {
         setCurrency(newValue);
     };
     function handleSubmit() {
-        onRequest(domainName, currency);
+        onRequest(domainName, subdomainPrice, currency);
     }
 
     return (
         <Stack direction="row" spacing={2}>
             <TextField id="domainName" label="New domain name" value={domainName} onChange={handleDomainNameChange} variant="outlined" required />
+            <TextField id="subdomainPrice" label="Subdomain price USDC" value={subdomainPrice} onChange={handleSubdomainPriceChange} variant="outlined" required />
             <ToggleButtonGroup
                 color="primary"
                 value={currency}
