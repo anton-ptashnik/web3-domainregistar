@@ -115,8 +115,21 @@ function ContractApp() {
     }
   }
 
-  function handleEarningsWithdrawal(currency) {
-    alert(`withdrawing ${currency}`);
+  async function handleEarningsWithdrawal(currency) {
+    const signer = await provider.getSigner(window.selectedAccount);
+    const contractConn = contract.connect(signer);
+    let tx;
+    try {
+      if (currency=="ETH") {
+        tx = await contractConn.withdrawEth();
+      } else {
+        tx = await contractConn.withdrawUsdc();
+      }
+      await tx.wait();
+      alert(`Your ${currency} was sent. Check your balance`);
+    } catch(err) {
+      alert(err.message);
+    }
   }
 
   async function handleUsdcAllowanceChange(newAllowance) {
