@@ -19,4 +19,13 @@ contract UsdcToken is ERC20, Ownable {
     function mint(address to, uint256 value) external onlyOwner {
         _mint(to, value);
     }
+
+    // override parent impl to emit Approval with remaining coins left after transfer
+    function transferFrom(address from, address to, uint256 value) public override returns (bool) {
+        bool ok = super.transferFrom(from, to, value);
+        address spender = _msgSender();
+        uint256 newAllowance = allowance(from, spender);
+        emit Approval(from, spender, newAllowance);
+        return ok;
+    }
 }
