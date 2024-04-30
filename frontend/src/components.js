@@ -100,9 +100,10 @@ function EarningsWithdrawal({ onRequest }) {
 
 const columns = [
     { field: 'id', headerName: 'ID' },
-    { field: 'timestamp', headerName: 'Timestamp', flex: 0.2 },
-    { field: 'domain', headerName: 'Domain', flex: 0.4 },
-    { field: 'controller', headerName: 'Controller', flex: 0.4 },
+    { field: 'timestamp', headerName: 'Timestamp', flex: 0.15 },
+    { field: 'domain', headerName: 'Domain', flex: 0.3 },
+    { field: 'subdomainPrice', headerName: 'Subdomain USDC price', flex: 0.2 },
+    { field: 'controller', headerName: 'Controller', flex: 0.35 },
 ];
 
 function RegistrationHistory({ history }) {

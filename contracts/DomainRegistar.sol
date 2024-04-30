@@ -47,8 +47,9 @@ contract DomainRegistar is Initializable {
      * @param _owner domain owner
      * @param owner domain owner
      * @param domain name of a new domain 
+     * @param subdomainPriceUsdc USDC price for subdomain registration
      */
-    event DomainRegistered(address indexed _owner, address owner, string domain);
+    event DomainRegistered(address indexed _owner, address owner, string domain, uint256 subdomainPriceUsdc);
 
     /**
      * Emitted on price change
@@ -189,7 +190,7 @@ contract DomainRegistar is Initializable {
         newEntry.domainName = newSubdomainName;
         newEntry.usdcDomainPrice = subdomainPriceUsdc;
 
-        emit DomainRegistered(msg.sender, msg.sender, domainFullname);
+        emit DomainRegistered(msg.sender, msg.sender, domainFullname, subdomainPriceUsdc);
         return parentEntry;
     }
 

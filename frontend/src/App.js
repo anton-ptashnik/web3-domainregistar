@@ -151,11 +151,21 @@ function ContractApp() {
       const logs = await contract.queryFilter(allRegistrationsFilter, 0, "latest");
       const timeNow = Date.now();
       const __history = logs.map((log, i) => ({
-         id: log.args.domain+log.args.owner, timestamp: timeNow, domain: log.args.domain, controller: log.args.owner 
+         id: log.args.domain+log.args.owner,
+         timestamp: timeNow,
+         domain: log.args.domain,
+         controller: log.args.owner,
+         subdomainPrice: log.args.subdomainPriceUsdc
       }));
       setHistory(__history);
-      contract.on("DomainRegistered", (_, owner, domain) => {
-        setHistory(_history => _history.concat({ id: domain+owner, timestamp: Date.now(), domain: domain, controller: owner }))
+      contract.on("DomainRegistered", (_, owner, domain, subdomainPriceUsdc) => {
+        setHistory(_history => _history.concat({
+          id: domain+owner,
+          timestamp: Date.now(),
+          domain: domain,
+          controller: owner,
+          subdomainPrice: subdomainPriceUsdc
+        }))
       })
     }
     updateHistory();

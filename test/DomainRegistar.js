@@ -83,7 +83,7 @@ describe("DomainRegistar", function () {
       const domainRegistar0 = domainRegistar.connect(domainOwner0);
       const domainPrice0Usdc = initialDomainPriceUsdc+1000;
       await expect(domainRegistar0.registerDomain(domainName0, initialDomainPriceUsdc, {value: contractOwnerPrice}))
-      .to.emit(domainRegistar, "DomainRegistered").withArgs(anyValue, domainOwner0.address, domainName0);
+      .to.emit(domainRegistar, "DomainRegistered").withArgs(anyValue, domainOwner0.address, domainName0, initialDomainPriceUsdc);
       
       await expect(domainRegistar0.updateSubdomainPrice(domainPrice0Usdc, domainName0))
       .to.emit(domainRegistar, "PriceChanged").withArgs(domainPrice0Usdc, initialDomainPriceUsdc);
@@ -93,7 +93,7 @@ describe("DomainRegistar", function () {
       const domainRegistar1 = domainRegistar.connect(domainOwner1);
       const domainPrice0 = await domainRegistar.subdomainPriceWei(domainName0);
       await expect(domainRegistar1.registerDomain(domainName1, initialDomainPriceUsdc, {value: domainPrice0}))
-      .to.emit(domainRegistar, "DomainRegistered").withArgs(anyValue, domainOwner1.address, domainName1);
+      .to.emit(domainRegistar, "DomainRegistered").withArgs(anyValue, domainOwner1.address, domainName1, initialDomainPriceUsdc);
     });
   });
 
@@ -106,19 +106,19 @@ describe("DomainRegistar", function () {
       const coinsMap = {value: initialDomainPrice}
       await expect(domainRegistar.registerDomain(domainName, initialDomainPriceUsdc, coinsMap))
         .to.emit(domainRegistar, "DomainRegistered")
-        .withArgs(anyValue, owner.address, domainName);
+        .withArgs(anyValue, owner.address, domainName, initialDomainPriceUsdc);
 
       const anotherDomainName = "hidomain2";
       const anotherDomainRegistar = domainRegistar.connect(anotherAccount)
       await expect(anotherDomainRegistar.registerDomain(anotherDomainName, initialDomainPriceUsdc, coinsMap))
         .to.emit(anotherDomainRegistar, "DomainRegistered")
-        .withArgs(anyValue, anotherAccount.address, anotherDomainName);
+        .withArgs(anyValue, anotherAccount.address, anotherDomainName, initialDomainPriceUsdc);
 
       const anotherDomainName2 = "hidomainbest";
       await usdcContract.approve(domainRegistar.getAddress(), initialDomainPriceUsdc+10000)
       await expect(domainRegistar.registerDomainUsdc(anotherDomainName2, initialDomainPriceUsdc))
         .to.emit(domainRegistar, "DomainRegistered")
-        .withArgs(anyValue, owner.address, anotherDomainName2);
+        .withArgs(anyValue, owner.address, anotherDomainName2, initialDomainPriceUsdc);
     });
 
     it("Should refuse same domain registration", async function () {
@@ -129,7 +129,7 @@ describe("DomainRegistar", function () {
 
       await expect(domainRegistar.registerDomain(domainName, initialDomainPriceUsdc, coinsMap))
         .to.emit(domainRegistar, "DomainRegistered")
-        .withArgs(anyValue, owner.address, domainName);
+        .withArgs(anyValue, owner.address, domainName, initialDomainPriceUsdc);
 
       await expect(domainRegistar.registerDomain(domainName, initialDomainPriceUsdc, coinsMap))
         .to.be.revertedWithCustomError(domainRegistar, "DuplicateDomain");
@@ -156,7 +156,7 @@ describe("DomainRegistar", function () {
       await usdcContract.approve(domainRegistar.getAddress(), newDomainPrice);
       await expect(domainRegistar.registerDomainUsdc("sub.topdomain", newDomainPrice-10))
         .to.emit(domainRegistar, "DomainRegistered")
-        .withArgs(anyValue, owner.address, "sub.topdomain");
+        .withArgs(anyValue, owner.address, "sub.topdomain", newDomainPrice-10);
     });
     
     it.skip("Should scale", async function () {
@@ -181,19 +181,19 @@ describe("DomainRegistar", function () {
       const coinsMap = {value: initialDomainPrice}
       await expect(domainRegistar.registerDomain(domainName0, initialDomainPriceUsdc, coinsMap))
       .to.emit(domainRegistar, "DomainRegistered")
-      .withArgs(anyValue, owner.address, domainName0);
+      .withArgs(anyValue, owner.address, domainName0, initialDomainPriceUsdc);
       
       const anotherAccount = otherAccounts[0];
       const domainRegistarAnotherAccount = domainRegistar.connect(anotherAccount);
       await expect(domainRegistarAnotherAccount.registerDomain(domainName1, initialDomainPriceUsdc, coinsMap))
       .to.emit(domainRegistar, "DomainRegistered")
-      .withArgs(anyValue, anotherAccount.address, domainName1);
+      .withArgs(anyValue, anotherAccount.address, domainName1, initialDomainPriceUsdc);
 
       const anotherAccount2 = otherAccounts[1];
       const domainRegistarAnotherAccount2 = domainRegistar.connect(anotherAccount2);
       await expect(domainRegistarAnotherAccount2.registerDomain(domainName2, initialDomainPriceUsdc, coinsMap))
       .to.emit(domainRegistar, "DomainRegistered")
-      .withArgs(anyValue, anotherAccount2.address, domainName2);
+      .withArgs(anyValue, anotherAccount2.address, domainName2, initialDomainPriceUsdc);
     });
 
     it("Should refuse registration when parent domain does not exist", async function () {
@@ -230,7 +230,7 @@ describe("DomainRegistar", function () {
       const subdomainPriceUsdc = initialDomainPriceUsdc + 1000;
       await expect(domainRegistar0.registerDomain(domainName0, initialDomainPriceUsdc, {value: initialDomainPrice}))
       .to.emit(domainRegistar, "DomainRegistered")
-      .withArgs(anyValue, accountDomainRegistar0.address, domainName0);
+      .withArgs(anyValue, accountDomainRegistar0.address, domainName0, initialDomainPriceUsdc);
       
       await domainRegistar0.updateSubdomainPrice(subdomainPriceUsdc, domainName0);
       const subdomainPriceEth = await domainRegistar0.subdomainPriceWei(domainName0);
@@ -240,7 +240,7 @@ describe("DomainRegistar", function () {
       for(let domainName of subdomains) {
         await expect(domainRegistar1.registerDomain(domainName, initialDomainPriceUsdc, {value: subdomainPriceEth}))
         .to.emit(domainRegistar, "DomainRegistered")
-        .withArgs(anyValue, accountDomainRegistar1.address, domainName);
+        .withArgs(anyValue, accountDomainRegistar1.address, domainName, initialDomainPriceUsdc);
       }
 
       const totalSpentSubdomains = BigInt(subdomains.length) * subdomainPriceEth;
