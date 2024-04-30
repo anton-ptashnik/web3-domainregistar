@@ -4,21 +4,27 @@ import Divider from '@mui/material/Divider';
 import Typography from '@mui/material/Typography';
 import {
   DomainRegistration, DomainOwnerResolution, ControllerEarningsCheck,
-  EarningsWithdrawal, RegistrationHistory, MetamaskConnection
+  EarningsWithdrawal, RegistrationHistory, MetamaskConnection, UsdcAllowance
 } from './components';
 
 import { ethers } from 'ethers'
-import abiFile from './DomainRegistar.json'
+import domainRegistarAbiFile from './DomainRegistar.json'
+import usdcAbiFile from './UsdcToken.json'
 
 const { ethereum } = window;
 const isMetamaskFound = ethereum && ethereum.isMetaMask;
-let App, provider, contract;
+let App, provider, contract, usdcContract;
 if (isMetamaskFound) {
   App = ContractApp;
   provider = new ethers.BrowserProvider(window.ethereum);
   contract = new ethers.Contract(
     process.env.REACT_APP_CONTRACT_ADDRESS,
-    abiFile.abi,
+    domainRegistarAbiFile.abi,
+    provider
+  );
+  usdcContract = new ethers.Contract(
+    process.env.REACT_APP_USDC_CONTRACT_ADDRESS,
+    usdcAbiFile.abi,
     provider
   );
 } else {
@@ -29,6 +35,9 @@ if (isMetamaskFound) {
 let didInit = false;
 
 function ContractApp() {
+  const [history, setHistory] = React.useState([]);
+  const [usdcAllowance, setUsdcAllowance] = React.useState(0);
+
   async function handleConnect() {
     try {
       // await ethereum.request({
@@ -50,6 +59,21 @@ function ContractApp() {
   }
 
   function handleAccountSelected(account) {
+    async function updUsdcAllowance() {
+      const signer = await provider.getSigner(account);
+      const contractConn = usdcContract.connect(signer);
+      try {
+        const _allowance = await contractConn.allowance(account, contract.getAddress());
+        setUsdcAllowance(_allowance);
+        await usdcContract.off("Approval");
+        await usdcContract.on("Approval", (owner, spender, value) => {
+          if (owner.toLowerCase() == account.toLowerCase()) setUsdcAllowance(value);
+        });
+      } catch(err) {
+        alert(err.message);
+      }
+    }
+    updUsdcAllowance();
     window.selectedAccount = account;
   }
 
@@ -64,9 +88,7 @@ function ContractApp() {
         const priceWei = await contractConn.subdomainPriceWei(parentDomain);
         tx = await contractConn.registerDomain(domainName, subdomainPriceUsdc, {value: priceWei});
       } else {
-        // tx = await contractConn.registerDomainUsdc(domainName);
-        alert("Not impl");
-        return;
+        tx = await contractConn.registerDomainUsdc(domainName, subdomainPriceUsdc);
       }
       await tx.wait();
     } catch(err) {
@@ -97,7 +119,17 @@ function ContractApp() {
     alert(`withdrawing ${currency}`);
   }
 
-  const [history, setHistory] = React.useState([]);
+  async function handleUsdcAllowanceChange(newAllowance) {
+    const signer = await provider.getSigner(window.selectedAccount);
+    const contractConn = usdcContract.connect(signer);
+    try {
+      const tx = await contractConn.approve(contract.getAddress(), newAllowance);
+      await tx.wait();
+    } catch(err) {
+      alert(err.message);
+    }
+  }
+
   React.useEffect(() => {
     if (didInit) return;
     didInit = true;
@@ -125,6 +157,9 @@ function ContractApp() {
 
       <Divider flexItem>Connect to the Domain Registar</Divider>
       <MetamaskConnection onConnect={handleConnect} onAccountSelected={handleAccountSelected}/>
+
+      <Divider flexItem>Check/update USDC allowance for DomainRegistar</Divider>
+      <UsdcAllowance onRequest={handleUsdcAllowanceChange} allowance={String(usdcAllowance)}/>
 
       <Divider flexItem>Register a new domain</Divider>
       <DomainRegistration onRequest={handleDomainRegistration}/>

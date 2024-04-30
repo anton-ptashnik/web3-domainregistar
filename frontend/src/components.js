@@ -10,7 +10,7 @@ import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
 import FormHelperText from '@mui/material/FormHelperText';
 import FormControl from '@mui/material/FormControl';
-
+import Typography from '@mui/material/Typography';
 
 function DomainRegistration({ onRequest }) {
     const [currency, setCurrency] = React.useState('ETH');
@@ -179,4 +179,26 @@ function MetamaskConnection({ onConnect, onAccountSelected }) {
     );
 }
 
-export { DomainRegistration, DomainOwnerResolution, ControllerEarningsCheck, EarningsWithdrawal, RegistrationHistory, MetamaskConnection };
+function UsdcAllowance({ onRequest, allowance }) {
+    const [newAllowance, setNewAllowance] = React.useState("");
+
+    function onClick() {
+        onRequest(newAllowance);
+    }
+    function handleAllowanceChange(e) {
+        setNewAllowance(e.target.value);
+    }
+    return (
+        <Stack direction="column" spacing={2} alignItems="center">
+        <Typography variant="body1" gutterBottom>
+        Your current USDC allowance for DomainRegistar is {allowance}
+        </Typography>
+        <Stack direction="row" spacing={2}>
+            <TextField id="controllerAddress" value={newAllowance} onChange={handleAllowanceChange} label="New USDC allowance for DomainRegistar" variant="outlined" required />
+            <Button variant='contained' onClick={onClick}>Approve</Button>
+        </Stack>
+        </Stack>
+    );
+}
+
+export { DomainRegistration, DomainOwnerResolution, ControllerEarningsCheck, EarningsWithdrawal, RegistrationHistory, MetamaskConnection, UsdcAllowance };
