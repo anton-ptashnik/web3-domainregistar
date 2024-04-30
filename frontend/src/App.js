@@ -64,10 +64,10 @@ function ContractApp() {
       const contractConn = usdcContract.connect(signer);
       try {
         const _allowance = await contractConn.allowance(account, contract.getAddress());
-        setUsdcAllowance(_allowance);
+        setUsdcAllowance(ethers.formatUnits(_allowance, 6));
         await usdcContract.off("Approval");
         await usdcContract.on("Approval", (owner, spender, value) => {
-          if (owner.toLowerCase() == account.toLowerCase()) setUsdcAllowance(value);
+          if (owner.toLowerCase() == account.toLowerCase()) setUsdcAllowance(ethers.formatUnits(value, 6));
         });
       } catch(err) {
         alert(err.message);
@@ -82,13 +82,14 @@ function ContractApp() {
     const contractConn = contract.connect(signer);
     let tx;
     try {
+      const subdomainPriceUsdcInt = ethers.parseUnits(subdomainPriceUsdc, 6);
       if (purchaseCurrency=="ETH") {
         const firstDot = domainName.indexOf(".");
         const parentDomain = firstDot > 0 ? domainName.substr(firstDot+1) : "";
         const priceWei = await contractConn.subdomainPriceWei(parentDomain);
-        tx = await contractConn.registerDomain(domainName, subdomainPriceUsdc, {value: priceWei});
+        tx = await contractConn.registerDomain(domainName, subdomainPriceUsdcInt, {value: priceWei});
       } else {
-        tx = await contractConn.registerDomainUsdc(domainName, subdomainPriceUsdc);
+        tx = await contractConn.registerDomainUsdc(domainName, subdomainPriceUsdcInt);
       }
       await tx.wait();
     } catch(err) {
@@ -109,7 +110,9 @@ function ContractApp() {
     try {
       const ethBalance = await contract.domainOwnerEarningsEth(ownerAddress);
       const usdcBalance = await contract.domainOwnerEarningsUsdc(ownerAddress);
-      alert(`Earnings of ${ownerAddress}: ETH=${ethBalance}, USDC=${usdcBalance}`);
+      const ethBalanceFloat = ethers.formatEther(ethBalance);
+      const usdcBalanceFloat = ethers.formatUnits(usdcBalance, 6);
+      alert(`Earnings of ${ownerAddress}: ETH=${ethBalanceFloat}, USDC=${usdcBalanceFloat}`);
     } catch (err) {
       alert(err.message);
     }
@@ -135,8 +138,9 @@ function ContractApp() {
   async function handleUsdcAllowanceChange(newAllowance) {
     const signer = await provider.getSigner(window.selectedAccount);
     const contractConn = usdcContract.connect(signer);
+    const newAllowanceInt = ethers.parseUnits(newAllowance, 6);
     try {
-      const tx = await contractConn.approve(contract.getAddress(), newAllowance);
+      const tx = await contractConn.approve(contract.getAddress(), newAllowanceInt);
       await tx.wait();
     } catch(err) {
       alert(err.message);
@@ -155,7 +159,7 @@ function ContractApp() {
          timestamp: timeNow,
          domain: log.args.domain,
          controller: log.args.owner,
-         subdomainPrice: log.args.subdomainPriceUsdc
+         subdomainPrice: ethers.formatUnits(log.args.subdomainPriceUsdc, 6)
       }));
       setHistory(__history);
       contract.on("DomainRegistered", (_, owner, domain, subdomainPriceUsdc) => {
@@ -164,7 +168,7 @@ function ContractApp() {
           timestamp: Date.now(),
           domain: domain,
           controller: owner,
-          subdomainPrice: subdomainPriceUsdc
+          subdomainPrice: ethers.formatUnits(subdomainPriceUsdc, 6)
         }))
       })
     }
@@ -182,7 +186,7 @@ function ContractApp() {
       <MetamaskConnection onConnect={handleConnect} onAccountSelected={handleAccountSelected}/>
 
       <Divider flexItem>Check/update USDC allowance for DomainRegistar</Divider>
-      <UsdcAllowance onRequest={handleUsdcAllowanceChange} allowance={String(usdcAllowance)}/>
+      <UsdcAllowance onRequest={handleUsdcAllowanceChange} allowance={usdcAllowance}/>
 
       <Divider flexItem>Register a new domain</Divider>
       <DomainRegistration onRequest={handleDomainRegistration}/>
