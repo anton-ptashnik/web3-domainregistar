@@ -2,9 +2,10 @@ import * as React from 'react';
 import Stack from '@mui/material/Stack';
 import Divider from '@mui/material/Divider';
 import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
 import {
   DomainRegistration, DomainOwnerResolution, ControllerEarningsCheck,
-  EarningsWithdrawal, RegistrationHistory, MetamaskConnection, UsdcAllowance
+  EarningsWithdrawal, RegistrationHistory, UsdcAllowance
 } from './components';
 
 import { ethers } from 'ethers'
@@ -31,12 +32,12 @@ if (isMetamaskFound) {
   App = MetamaskMissingApp;
 }
 
-
 let didInit = false;
 
 function ContractApp() {
   const [history, setHistory] = React.useState([]);
   const [usdcAllowance, setUsdcAllowance] = React.useState(0);
+  const [selectedAccount, setSelectedAccount] = React.useState(null);
 
   async function handleConnect() {
     try {
@@ -51,6 +52,7 @@ function ContractApp() {
       const accounts = await ethereum.request({
         method: 'eth_requestAccounts',
       })
+      handleAccountChanged(accounts);
       return accounts;
     } catch {
       alert("Connection failed");
@@ -58,27 +60,8 @@ function ContractApp() {
     }
   }
 
-  function handleAccountSelected(account) {
-    async function updUsdcAllowance() {
-      const signer = await provider.getSigner(account);
-      const contractConn = usdcContract.connect(signer);
-      try {
-        const _allowance = await contractConn.allowance(account, contract.getAddress());
-        setUsdcAllowance(ethers.formatUnits(_allowance, 6));
-        await usdcContract.off("Approval");
-        await usdcContract.on("Approval", (owner, spender, value) => {
-          if (owner.toLowerCase() == account.toLowerCase()) setUsdcAllowance(ethers.formatUnits(value, 6));
-        });
-      } catch(err) {
-        alert(err.message);
-      }
-    }
-    updUsdcAllowance();
-    window.selectedAccount = account;
-  }
-
   async function handleDomainRegistration(domainName, subdomainPriceUsdc, purchaseCurrency) {
-    const signer = await provider.getSigner(window.selectedAccount);
+    const signer = await provider.getSigner(selectedAccount);
     const contractConn = contract.connect(signer);
     let tx;
     try {
@@ -119,7 +102,7 @@ function ContractApp() {
   }
 
   async function handleEarningsWithdrawal(currency) {
-    const signer = await provider.getSigner(window.selectedAccount);
+    const signer = await provider.getSigner(selectedAccount);
     const contractConn = contract.connect(signer);
     let tx;
     try {
@@ -136,7 +119,7 @@ function ContractApp() {
   }
 
   async function handleUsdcAllowanceChange(newAllowance) {
-    const signer = await provider.getSigner(window.selectedAccount);
+    const signer = await provider.getSigner(selectedAccount);
     const contractConn = usdcContract.connect(signer);
     const newAllowanceInt = ethers.parseUnits(newAllowance, 6);
     try {
@@ -147,10 +130,38 @@ function ContractApp() {
     }
   }
 
+  async function handleAccountChanged([account]) {
+    setSelectedAccount(account);
+    const signer = await provider.getSigner(account);
+    const contractConn = usdcContract.connect(signer);
+    try {
+      const _allowance = await contractConn.allowance(account, contract.getAddress());
+      setUsdcAllowance(ethers.formatUnits(_allowance, 6));
+    } catch(err) {
+      alert(err.message);
+    }
+    await usdcContract.off("Approval");
+    await usdcContract.on("Approval", (owner, spender, value) => {
+      if (owner.toLowerCase() == account.toLowerCase()) setUsdcAllowance(ethers.formatUnits(value, 6));
+    });
+  }
+
   React.useEffect(() => {
     if (didInit) return;
     didInit = true;
-    async function updateHistory() {
+    fetchDomainRegistrationHistory();
+    contract.on("DomainRegistered", (_, owner, domain, subdomainPriceUsdc) => {
+      setHistory(_history => _history.concat({
+        id: domain+owner,
+        timestamp: Date.now(),
+        domain: domain,
+        controller: owner,
+        subdomainPrice: ethers.formatUnits(subdomainPriceUsdc, 6)
+      }))
+    })
+    window.ethereum.on('accountsChanged', handleAccountChanged)
+
+    async function fetchDomainRegistrationHistory() {
       const allRegistrationsFilter = contract.filters.DomainRegistered();
       const logs = await contract.queryFilter(allRegistrationsFilter, 0, "latest");
       const timeNow = Date.now();
@@ -162,17 +173,8 @@ function ContractApp() {
          subdomainPrice: ethers.formatUnits(log.args.subdomainPriceUsdc, 6)
       }));
       setHistory(__history);
-      contract.on("DomainRegistered", (_, owner, domain, subdomainPriceUsdc) => {
-        setHistory(_history => _history.concat({
-          id: domain+owner,
-          timestamp: Date.now(),
-          domain: domain,
-          controller: owner,
-          subdomainPrice: ethers.formatUnits(subdomainPriceUsdc, 6)
-        }))
-      })
     }
-    updateHistory();
+    
   }, []);
 
   return (
@@ -183,7 +185,19 @@ function ContractApp() {
       </Typography>
 
       <Divider flexItem>Connect to the Domain Registar</Divider>
-      <MetamaskConnection onConnect={handleConnect} onAccountSelected={handleAccountSelected}/>
+      { selectedAccount == null
+      ?
+      <Stack direction="row" spacing={4}>
+            <Button id='connect' onClick={handleConnect}
+                variant='contained'>
+                Connect to Metamask
+            </Button>
+      </Stack>
+      :
+      <Typography variant="body1" gutterBottom>
+        <b>Connected as:</b> {selectedAccount}
+      </Typography>
+      }
 
       <Divider flexItem>Check/update USDC allowance for DomainRegistar</Divider>
       <UsdcAllowance onRequest={handleUsdcAllowanceChange} allowance={usdcAllowance}/>

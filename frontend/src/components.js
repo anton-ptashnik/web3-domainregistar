@@ -6,10 +6,6 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Stack from '@mui/material/Stack';
 import Box from '@mui/material/Box';
 import { DataGrid, GridToolbar } from '@mui/x-data-grid';
-import MenuItem from '@mui/material/MenuItem';
-import Select from '@mui/material/Select';
-import FormHelperText from '@mui/material/FormHelperText';
-import FormControl from '@mui/material/FormControl';
 import Typography from '@mui/material/Typography';
 
 function DomainRegistration({ onRequest }) {
@@ -133,53 +129,6 @@ function RegistrationHistory({ history }) {
     );
 }
 
-function MetamaskConnection({ onConnect, onAccountSelected }) {
-    const [accounts, setAccounts] = React.useState([])
-    const [selectedAccount, setSelectedAccount] = React.useState(null)
-
-    async function handleClick(e) {
-        const accounts = await onConnect();
-        if (accounts == null) {
-            return;
-        }
-        setAccounts(accounts);
-        setSelectedAccount(accounts[0]);
-        onAccountSelected(accounts[0]);
-    }
-    function handleChange(event) {
-        setSelectedAccount(event.target.value);
-        onAccountSelected(event.target.value);
-    };
-
-    const selectItems = accounts.map(acc => <MenuItem value={acc}>{acc}</MenuItem>)
-    const isConnected = accounts.length > 0;
-    return (
-        <Stack direction="row" spacing={4}>
-            {isConnected
-                ?
-                <FormControl>
-                    <Select
-                        id="account-select"
-                        labelId="account-select-label"
-                        value={selectedAccount}
-                        label="Account"
-                        onChange={handleChange}
-                    >
-                        {selectItems}
-                    </Select>
-                    <FormHelperText>Select an account for countract interaction</FormHelperText>
-                </FormControl>
-                :
-                <Button id='connect' onClick={handleClick}
-                    disabled={selectedAccount != null}
-                    variant='contained'>
-                    Connect to Metamask
-                </Button>
-            }
-        </Stack>
-    );
-}
-
 function UsdcAllowance({ onRequest, allowance }) {
     const [newAllowance, setNewAllowance] = React.useState("");
 
@@ -202,4 +151,4 @@ function UsdcAllowance({ onRequest, allowance }) {
     );
 }
 
-export { DomainRegistration, DomainOwnerResolution, ControllerEarningsCheck, EarningsWithdrawal, RegistrationHistory, MetamaskConnection, UsdcAllowance };
+export { DomainRegistration, DomainOwnerResolution, ControllerEarningsCheck, EarningsWithdrawal, RegistrationHistory, UsdcAllowance };
