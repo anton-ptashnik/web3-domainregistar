@@ -13,9 +13,9 @@ import FormControl from '@mui/material/FormControl';
 import Typography from '@mui/material/Typography';
 
 function DomainRegistration({ onRequest }) {
-    const [currency, setCurrency] = React.useState('ETH');
-    const [domainName, setDomainName] = React.useState('new.domain');
-    const [subdomainPrice, setSubdomainPrice] = React.useState(1000000);
+    const [currency, setCurrency] = React.useState("ETH");
+    const [domainName, setDomainName] = React.useState("");
+    const [subdomainPrice, setSubdomainPrice] = React.useState("");
 
     function handleDomainNameChange(e) {
         setDomainName(e.target.value);
@@ -49,7 +49,7 @@ function DomainRegistration({ onRequest }) {
 }
 
 function DomainOwnerResolution({ onRequest }) {
-    const [domainName, setDomainName] = React.useState('existing.domain');
+    const [domainName, setDomainName] = React.useState("");
 
     function handleClick() {
         onRequest(domainName);
@@ -67,7 +67,7 @@ function DomainOwnerResolution({ onRequest }) {
 }
 
 function ControllerEarningsCheck({ onRequest }) {
-    const [controllerAddress, setControllerAddress] = React.useState('0x1111111111111111');
+    const [controllerAddress, setControllerAddress] = React.useState("");
 
     function onClick() {
         onRequest(controllerAddress);
@@ -194,7 +194,7 @@ function UsdcAllowance({ onRequest, allowance }) {
         Your current USDC allowance for DomainRegistar is {allowance}
         </Typography>
         <Stack direction="row" spacing={2}>
-            <TextField id="controllerAddress" value={newAllowance} onChange={handleAllowanceChange} label="New USDC allowance for DomainRegistar" variant="outlined" required />
+            <TextField id="controllerAddress" value={newAllowance} onChange={handleAllowanceChange} label="USDC allowance for DomainRegistar" variant="outlined" required />
             <Button variant='contained' onClick={onClick}>Approve</Button>
         </Stack>
         </Stack>
