@@ -10,6 +10,7 @@
   "author": "me",
   "license": "ISC",
   "devDependencies": {
+    "@chainlink/contracts": "^1.1.0",
     "@nomicfoundation/hardhat-ethers": "^3.0.5",
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "@openzeppelin/contracts-upgradeable": "^5.0.2",

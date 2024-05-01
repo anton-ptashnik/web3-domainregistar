@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 // import "hardhat/console.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import "./DomainUtils.sol";
 
 error AccessDenied(string description);
@@ -38,8 +39,11 @@ contract DomainRegistar is Initializable {
         /// @notice USDC token contract used for USDC payments
         ERC20 usdcTokenContract;
         
-        /// @notice current Wei to USDC rate used for Eth payments
-        uint256 weiUsdcRate;
+        /// @notice current USDC to ETH rate used for ETH payments
+        uint256 usdcEthRate;
+
+        /// @notice USDC to ETH Data feed to enable USDC to ETH convertion for ETH domain purchases
+        AggregatorV3Interface usdc2EthDataFeed;
     }
 
     /**
@@ -58,12 +62,20 @@ contract DomainRegistar is Initializable {
      */
     event PriceChanged(uint256 newPrice, uint256 oldPrice);
 
-    constructor(address usdcContractAddress, uint256 usdcDomainPrice) {
+    constructor(address usdcContractAddress, address usdcToEthContractAddress, uint256 usdcDomainPrice) {
         MainStorage storage $ = _getMainStorage();
         $.rootEntry.owner = payable(msg.sender);
         $.rootEntry.usdcDomainPrice = usdcDomainPrice;
         $.usdcTokenContract = ERC20(usdcContractAddress);
-        $.weiUsdcRate = 324046892602;
+        $.usdc2EthDataFeed = AggregatorV3Interface(usdcToEthContractAddress);
+        (
+            /* uint80 roundID */,
+            int256 answer,
+            /*uint startedAt*/,
+            /*uint timeStamp*/,
+            /*uint80 answeredInRound*/
+        )  = $.usdc2EthDataFeed.latestRoundData();
+        $.usdcEthRate = uint256(answer);
     }
 
     /**
@@ -195,8 +207,8 @@ contract DomainRegistar is Initializable {
     }
 
     function convertUsdcToWei(uint256 usdcPrice) private view returns(uint256) {
-        uint weiUsdcRate = _getMainStorage().weiUsdcRate;
-        return usdcPrice*weiUsdcRate/1000000;
+        uint usdcEthRate = _getMainStorage().usdcEthRate;
+        return usdcPrice*usdcEthRate/1000000;
     }
 
     /**
@@ -226,5 +238,28 @@ contract DomainRegistar is Initializable {
         assembly {
             $.slot := MAIN_STORAGE_LOCATION
         }
+    }
+
+    /**
+     * Admin func to imitate a live contract by allowing owner to sync USDC2ETH rate with the Datafeed
+     */
+    function updateUsdc2EthRate() external {
+        MainStorage storage $ = _getMainStorage();
+        if (msg.sender != $.rootEntry.owner) revert AccessDenied("Allowed for owner only");
+        (
+            /* uint80 roundID */,
+            int256 answer,
+            /*uint startedAt*/,
+            /*uint timeStamp*/,
+            /*uint80 answeredInRound*/
+        )  = $.usdc2EthDataFeed.latestRoundData();
+        $.usdcEthRate = uint256(answer);
+    }
+
+    /**
+     * Return current in use USDC2ETH rate
+     */
+    function usdc2EthRate() external view returns(uint256) {
+        return _getMainStorage().usdcEthRate;
     }
 }

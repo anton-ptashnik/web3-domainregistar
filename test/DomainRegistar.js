@@ -13,10 +13,18 @@ describe("DomainRegistar", function () {
     const usdcSupply = 99000000;
     const usdcContract = await usdcContractFactory.deploy(usdcSupply);
 
+    const usdc2EthContractFactory = await ethers.getContractFactory("UsdcEthDataFeed");
+    const usdc2EthRate = 2222222222;
+    const usdc2EthContract = await usdc2EthContractFactory.deploy(usdc2EthRate);
+
     const factory = await ethers.getContractFactory("DomainRegistar", owner);
-    const domainRegistar = await factory.deploy(usdcContract.getAddress(), initialDomainPriceUsdc);
+    const domainRegistar = await factory.deploy(
+      usdcContract.getAddress(),
+      usdc2EthContract.getAddress(),
+      initialDomainPriceUsdc
+    );
     const initialDomainPrice = Number(await domainRegistar.subdomainPriceWei(""));
-    return { domainRegistar, usdcContract, initialDomainPrice, initialDomainPriceUsdc, owner, otherAccounts};
+    return { domainRegistar, usdcContract, usdc2EthContract, initialDomainPrice, initialDomainPriceUsdc, owner, otherAccounts};
   }
 
   async function deployContractWithData() {
@@ -250,6 +258,33 @@ describe("DomainRegistar", function () {
       const totalSpentTopdomains = initialDomainPrice;
       await expect(domainRegistar.withdraw())
         .to.changeEtherBalances([domainRegistar, owner], [-totalSpentTopdomains, totalSpentTopdomains]);
+    });
+
+    it("Should recalculate ETH price on USDC2ETH Datafeed update", async function () {
+      const { domainRegistar, usdc2EthContract, owner, otherAccounts } = await loadFixture(deployContract);
+      const anotherAccount = otherAccounts[0];
+      const anotherDomainRegistar = domainRegistar.connect(otherAccounts[0])
+
+      const subdomainPriceEth = await anotherDomainRegistar.subdomainPriceWei("");
+      const domainRegistarUsdc2EthRate = await anotherDomainRegistar.usdc2EthRate();
+      await expect(anotherDomainRegistar.registerDomain("top", 1, {value: subdomainPriceEth}))
+        .to.emit(anotherDomainRegistar, "DomainRegistered")
+        .withArgs(anyValue, anotherAccount.address, "top", 1);
+
+      const datafeedNewUsdc2EthRate = domainRegistarUsdc2EthRate+1000n;
+      await usdc2EthContract.updateRate(datafeedNewUsdc2EthRate);
+      await domainRegistar.updateUsdc2EthRate();
+
+      const domainRegistarNewUsdc2EthRate = await anotherDomainRegistar.usdc2EthRate();
+      const newSubdomainPriceEth = await anotherDomainRegistar.subdomainPriceWei("");
+      expect(newSubdomainPriceEth).not.equal(subdomainPriceEth);
+      expect(domainRegistarNewUsdc2EthRate).to.equal(datafeedNewUsdc2EthRate);
+
+      await expect(anotherDomainRegistar.registerDomain("top2", 1, {value: subdomainPriceEth}))
+        .to.be.revertedWithCustomError(anotherDomainRegistar, "NotEnoughFunds");
+      await expect(anotherDomainRegistar.registerDomain("top2", 1, {value: newSubdomainPriceEth}))
+      .to.emit(anotherDomainRegistar, "DomainRegistered")
+      .withArgs(anyValue, anotherAccount.address, "top2", 1);
     });
   });
 
