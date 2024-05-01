@@ -7,7 +7,8 @@
     "test": "hardhat test test/DomainRegistar.js",
     "installDeps": "bash ./installDeps.sh",
     "deployContract": "bash ./deployContract.sh",
-    "deployFrontend": "bash ./deployFrontend.sh"
+    "deployFrontend": "bash ./deployFrontend.sh",
+    "deployBackend": "bash ./deployFrontend.sh"
   },
   "author": "me",
   "license": "ISC",

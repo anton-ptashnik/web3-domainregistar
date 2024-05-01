@@ -8,7 +8,6 @@ pprint() {
 }
 
 pprint "Start Hardhat network"
-export ETHERNAL_API_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmaXJlYmFzZVVzZXJJZCI6IlE5a0pXRlhFNndhQ29PUjF6M3ZXWlBRRUs0azIiLCJhcGlLZXkiOiJOVFFLMkZRLVhNOE1aWVgtTkRLOVIyUS0xS1dOUVE2XHUwMDAxIiwiaWF0IjoxNzEzNzY3ODQ1fQ.Q8LqfFedZHK4jr8xlkUHAST6UrrZA6_JL44PCYOeKpk
 npx hardhat node | tee $LOGS_DIR/network.log &
 HH_NETWORK_PID=$!
 trap "kill -- -$HH_NETWORK_PID" EXIT # teardown network on finish
