@@ -8,10 +8,31 @@ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import "./DomainUtils.sol";
 
+/**
+ * Emitted on domain registration
+ * @param _owner domain owner
+ * @param owner domain owner
+ * @param domain name of a new domain 
+ * @param subdomainPriceUsdc USDC price for subdomain registration
+ */
+event DomainRegistered(address indexed _owner, address owner, string domain, uint256 subdomainPriceUsdc);
+
+/**
+ * Emitted on price change
+ * @param newPrice new USDC price
+ * @param oldPrice old USDC price
+ */
+event PriceChanged(uint256 newPrice, uint256 oldPrice);
+
+/// Raised when a caller is not allowed to call the function
 error AccessDenied(string description);
+/// Raised when coins provided for domain registration is lower that subdomain price
 error NotEnoughFunds(uint256 provided, uint256 required);
+/// Raised when the requested domain name already exists
 error DuplicateDomain();
+/// Raised when domain name includes extra symbols (/*7&^ etc)
 error InvalidDomainName();
+/// Raised on attempt to create a subdomain under missing parent domain, like requested.missingparent
 error ParentDomainDoesNotExists();
 
 
@@ -45,22 +66,6 @@ contract DomainRegistar is Initializable {
         /// @notice USDC to ETH Data feed to enable USDC to ETH convertion for ETH domain purchases
         AggregatorV3Interface usdc2EthDataFeed;
     }
-
-    /**
-     * Emitted on domain registration
-     * @param _owner domain owner
-     * @param owner domain owner
-     * @param domain name of a new domain 
-     * @param subdomainPriceUsdc USDC price for subdomain registration
-     */
-    event DomainRegistered(address indexed _owner, address owner, string domain, uint256 subdomainPriceUsdc);
-
-    /**
-     * Emitted on price change
-     * @param newPrice new price in Wei
-     * @param oldPrice old price in Wei
-     */
-    event PriceChanged(uint256 newPrice, uint256 oldPrice);
 
     constructor(address usdcContractAddress, address usdcToEthContractAddress, uint256 usdcDomainPrice) {
         MainStorage storage $ = _getMainStorage();
@@ -112,14 +117,14 @@ contract DomainRegistar is Initializable {
     }
 
     /**
-     * Return Wei price for registration of domains under the specified parent domain
+     * Return ETH price for registration of domains under the specified parent domain
      * @param domainFullpath domain name starting from top-level domain
      */
-    function subdomainPriceWei(string calldata domainFullpath) external view returns(uint256) {
+    function subdomainPriceEth(string calldata domainFullpath) external view returns(uint256) {
         MainStorage storage $ = _getMainStorage();
         string[] memory domainLevels = DomainUtils.parseDomainLevels(domainFullpath);
         uint256 usdcPrice = $.rootEntry.findDomainEntry(domainLevels, domainLevels.length).usdcDomainPrice;
-        return convertUsdcToWei(usdcPrice);
+        return _convertUsdcToEth(usdcPrice);
     }
 
     /**
@@ -169,9 +174,9 @@ contract DomainRegistar is Initializable {
     function registerDomain(string calldata domainFullname, uint256 subdomainPriceUsdc) external payable {
         DomainUtils.DomainEntry storage parentEntry = _registerDomain(domainFullname, subdomainPriceUsdc);
         MainStorage storage $ = _getMainStorage();
-        uint256 weiPrice = convertUsdcToWei(parentEntry.usdcDomainPrice);
-        if(msg.value < weiPrice) revert NotEnoughFunds(msg.value, weiPrice);
-        $.ethShares[parentEntry.owner] += weiPrice;
+        uint256 ethPrice = _convertUsdcToEth(parentEntry.usdcDomainPrice);
+        if(msg.value < ethPrice) revert NotEnoughFunds(msg.value, ethPrice);
+        $.ethShares[parentEntry.owner] += ethPrice;
     }
 
     /**
@@ -184,31 +189,6 @@ contract DomainRegistar is Initializable {
         MainStorage storage $ = _getMainStorage();
         $.usdcTokenContract.transferFrom(msg.sender, address(this), parentEntry.usdcDomainPrice);
         $.usdcShares[parentEntry.owner] += parentEntry.usdcDomainPrice;
-    }
-
-    function _registerDomain(string calldata domainFullname, uint256 subdomainPriceUsdc) private returns(DomainUtils.DomainEntry storage) {
-        MainStorage storage $ = _getMainStorage();
-
-        if(!DomainUtils.isValidDomainName(domainFullname)) revert InvalidDomainName();
-        string[] memory domainLevels = DomainUtils.parseDomainLevels(domainFullname);
-        string memory newSubdomainName = domainLevels[domainLevels.length - 1];
-        DomainUtils.DomainEntry storage parentEntry = $.rootEntry.findDomainEntry(domainLevels, domainLevels.length-1);
-
-        if(!parentEntry.exists()) revert ParentDomainDoesNotExists();
-        if(parentEntry.subdomains[newSubdomainName].exists()) revert DuplicateDomain();
-        
-        DomainUtils.DomainEntry storage newEntry = parentEntry.subdomains[newSubdomainName];
-        newEntry.owner = payable(msg.sender);
-        newEntry.domainName = newSubdomainName;
-        newEntry.usdcDomainPrice = subdomainPriceUsdc;
-
-        emit DomainRegistered(msg.sender, msg.sender, domainFullname, subdomainPriceUsdc);
-        return parentEntry;
-    }
-
-    function convertUsdcToWei(uint256 usdcPrice) private view returns(uint256) {
-        uint usdcEthRate = _getMainStorage().usdcEthRate;
-        return usdcPrice*usdcEthRate/1000000;
     }
 
     /**
@@ -234,12 +214,6 @@ contract DomainRegistar is Initializable {
         $.usdcTokenContract.transfer(msg.sender, balance);
     }
 
-    function _getMainStorage() private pure returns (MainStorage storage $) {
-        assembly {
-            $.slot := MAIN_STORAGE_LOCATION
-        }
-    }
-
     /**
      * Admin func to imitate a live contract by allowing owner to sync USDC2ETH rate with the Datafeed
      */
@@ -261,5 +235,36 @@ contract DomainRegistar is Initializable {
      */
     function usdc2EthRate() external view returns(uint256) {
         return _getMainStorage().usdcEthRate;
+    }
+
+    function _getMainStorage() private pure returns (MainStorage storage $) {
+        assembly {
+            $.slot := MAIN_STORAGE_LOCATION
+        }
+    }
+
+    function _registerDomain(string calldata domainFullname, uint256 subdomainPriceUsdc) private returns(DomainUtils.DomainEntry storage) {
+        MainStorage storage $ = _getMainStorage();
+
+        if(!DomainUtils.isValidDomainName(domainFullname)) revert InvalidDomainName();
+        string[] memory domainLevels = DomainUtils.parseDomainLevels(domainFullname);
+        string memory newSubdomainName = domainLevels[domainLevels.length - 1];
+        DomainUtils.DomainEntry storage parentEntry = $.rootEntry.findDomainEntry(domainLevels, domainLevels.length-1);
+
+        if(!parentEntry.exists()) revert ParentDomainDoesNotExists();
+        if(parentEntry.subdomains[newSubdomainName].exists()) revert DuplicateDomain();
+        
+        DomainUtils.DomainEntry storage newEntry = parentEntry.subdomains[newSubdomainName];
+        newEntry.owner = payable(msg.sender);
+        newEntry.domainName = newSubdomainName;
+        newEntry.usdcDomainPrice = subdomainPriceUsdc;
+
+        emit DomainRegistered(msg.sender, msg.sender, domainFullname, subdomainPriceUsdc);
+        return parentEntry;
+    }
+
+    function _convertUsdcToEth(uint256 usdcPrice) private view returns(uint256) {
+        uint usdcEthRate = _getMainStorage().usdcEthRate;
+        return usdcPrice*usdcEthRate/1000000;
     }
 }

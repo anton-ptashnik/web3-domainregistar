@@ -69,8 +69,8 @@ function ContractApp() {
       if (purchaseCurrency=="ETH") {
         const firstDot = domainName.indexOf(".");
         const parentDomain = firstDot > 0 ? domainName.substr(firstDot+1) : "";
-        const priceWei = await contractConn.subdomainPriceWei(parentDomain);
-        tx = await contractConn.registerDomain(domainName, subdomainPriceUsdcInt, {value: priceWei});
+        const priceEth = await contractConn.subdomainPriceEth(parentDomain);
+        tx = await contractConn.registerDomain(domainName, subdomainPriceUsdcInt, {value: priceEth});
       } else {
         tx = await contractConn.registerDomainUsdc(domainName, subdomainPriceUsdcInt);
       }

@@ -23,7 +23,7 @@ describe("DomainRegistar", function () {
       usdc2EthContract.getAddress(),
       initialDomainPriceUsdc
     );
-    const initialDomainPrice = Number(await domainRegistar.subdomainPriceWei(""));
+    const initialDomainPrice = Number(await domainRegistar.subdomainPriceEth(""));
     return { domainRegistar, usdcContract, usdc2EthContract, initialDomainPrice, initialDomainPriceUsdc, owner, otherAccounts};
   }
 
@@ -53,7 +53,7 @@ describe("DomainRegistar", function () {
       const {domainRegistar, owner, initialDomainPrice, initialDomainPriceUsdc } = await loadFixture(deployContract);
 
       expect(await domainRegistar.owner()).to.equal(owner.address);
-      expect(await domainRegistar.subdomainPriceWei("")).to.equal(initialDomainPrice);
+      expect(await domainRegistar.subdomainPriceEth("")).to.equal(initialDomainPrice);
       expect(await domainRegistar.subdomainPriceUsdc("")).to.equal(initialDomainPriceUsdc);
     });
   });
@@ -99,7 +99,7 @@ describe("DomainRegistar", function () {
 
       const domainOwner1 = otherAccounts[1]
       const domainRegistar1 = domainRegistar.connect(domainOwner1);
-      const domainPrice0 = await domainRegistar.subdomainPriceWei(domainName0);
+      const domainPrice0 = await domainRegistar.subdomainPriceEth(domainName0);
       await expect(domainRegistar1.registerDomain(domainName1, initialDomainPriceUsdc, {value: domainPrice0}))
       .to.emit(domainRegistar, "DomainRegistered").withArgs(anyValue, domainOwner1.address, domainName1, initialDomainPriceUsdc);
     });
@@ -241,7 +241,7 @@ describe("DomainRegistar", function () {
       .withArgs(anyValue, accountDomainRegistar0.address, domainName0, initialDomainPriceUsdc);
       
       await domainRegistar0.updateSubdomainPrice(subdomainPriceUsdc, domainName0);
-      const subdomainPriceEth = await domainRegistar0.subdomainPriceWei(domainName0);
+      const subdomainPriceEth = await domainRegistar0.subdomainPriceEth(domainName0);
 
       const accountDomainRegistar1 = otherAccounts[0];
       const domainRegistar1 = domainRegistar.connect(accountDomainRegistar1);
@@ -265,7 +265,7 @@ describe("DomainRegistar", function () {
       const anotherAccount = otherAccounts[0];
       const anotherDomainRegistar = domainRegistar.connect(otherAccounts[0])
 
-      const subdomainPriceEth = await anotherDomainRegistar.subdomainPriceWei("");
+      const subdomainPriceEth = await anotherDomainRegistar.subdomainPriceEth("");
       const domainRegistarUsdc2EthRate = await anotherDomainRegistar.usdc2EthRate();
       await expect(anotherDomainRegistar.registerDomain("top", 1, {value: subdomainPriceEth}))
         .to.emit(anotherDomainRegistar, "DomainRegistered")
@@ -276,7 +276,7 @@ describe("DomainRegistar", function () {
       await domainRegistar.updateUsdc2EthRate();
 
       const domainRegistarNewUsdc2EthRate = await anotherDomainRegistar.usdc2EthRate();
-      const newSubdomainPriceEth = await anotherDomainRegistar.subdomainPriceWei("");
+      const newSubdomainPriceEth = await anotherDomainRegistar.subdomainPriceEth("");
       expect(newSubdomainPriceEth).not.equal(subdomainPriceEth);
       expect(domainRegistarNewUsdc2EthRate).to.equal(datafeedNewUsdc2EthRate);
 
