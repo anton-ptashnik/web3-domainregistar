@@ -1,42 +1,41 @@
-# Web3 Domain registar
+# Web3 Domain Registar
 
 Basic service for accounting registered domain names that runs on Ethereum.
 
-## Testing
+## Features
 
-Before running tests please install dependencies:
+Domain Registar provides the following features:
+- top-level domain registration, eg top1, top2
+- subdomain registration, eg sub.top1, sub.top2, sub.sub.top1
+- paying for domains with ETH or USDC
+- earning from others creating subdomains under the owned domain. Subdomain price is specified in USDC
+- earnings withdrawal on demand
+- resolving domain owner account address by domain name
+- checking earnings
 
+## Frontend
+
+User access to the listed features is provided by a single page frontend application built with React. Follow the steps below to start the frontend.
+
+## Local deploy
+
+First, install required deps by running
 ```shell
-git submodule update --init --recursive
-npm install
+cd <rootDir>
+npm run installDeps
+```
+Then one can deploy Domain Registar and frontend by running
+```shell
+npm run deployContract # run in first terminal window
+npm run deployFrontend # run in another terminal window
 ```
 
-### Contract features tests
+Now a frontend page should be available at http://localhost:3000
 
-Run all contract tests using the command below. The contract gets deployed into a clean network and tests are run then.
+## Testing
+
+All contract features are covered by dedicated tests one can run using the command below. The contract gets deployed into a clean network and tests are run then.
 
 ```shell
 npm run test
 ```
-
-### v1->v2 contract upgrade tests
-
-Run post-upgrade contract integrity tests the command below. It runs a test suite for contract upgrade verification, making sure that: 1 - v2 still supports v1 features, 2 - v2 supports subdomains.
-
-```shell
-npm run test_v1to2_upgrade
-```
-
-
-High-level test scenario:
-1. Run all tests for contract v1 in a test network
-2. Deploy contract v1 into a live network
-3. Populate data for contract v1
-4. Run all tests for contract v2 in a test network
-5. Upgrade the deployed contract to v2
-6. Verify data populated to v1 is available for v2
-7. Verify v2 preserved v1 functionality - top level domain registration
-8. Verify v2 supports subdomain registration
-9. Verify withdrawal returns coins earned for all subdomains registered under owner's domain
-
-  *Note here test network means Hardhat network that auto-starts/stops when running tests, while live network means a network instance run locally by `hardhat node`.*

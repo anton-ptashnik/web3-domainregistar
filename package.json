@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "test": "hardhat test test/DomainRegistar.js",
-    "test_v1to2_upgrade": "bash ./test/upgrage_check.sh"
+    "installDeps": "bash ./installDeps.sh",
+    "deployContract": "bash ./deployContract.sh",
+    "deployFrontend": "bash ./deployFrontend.sh"
   },
   "author": "me",
   "license": "ISC",
