@@ -3,10 +3,9 @@ pragma solidity ^0.8.25;
 
 // Uncomment this line to use console.log
 // import "hardhat/console.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
-import "./DomainUtils.sol";
+import { DomainUtils } from "./DomainUtils.sol";
 
 /**
  * Emitted on domain registration
@@ -34,13 +33,14 @@ error DuplicateDomain();
 error InvalidDomainName();
 /// Raised on attempt to create a subdomain under missing parent domain, like requested.missingparent
 error ParentDomainDoesNotExists();
-
+/// Raised on error during earnings withdrawal
+error WithdrawalFailure();
 
 /**
  * @title A simple contract for top-level domain registration
  * @author Me
  */
-contract DomainRegistar is Initializable {
+contract DomainRegistar {
     // keccak256(abi.encode(uint256(keccak256("DomainRegistar.main")) - 1)) & ~bytes32(uint256(0xff));
     bytes32 private constant MAIN_STORAGE_LOCATION = 0x7b039d00eb6b93db42c4878af000bf4f52751a20d25ae3b0c322c5cf77ae8600;
 
@@ -200,7 +200,7 @@ contract DomainRegistar is Initializable {
         uint256 balance = shares[msg.sender];
         shares[msg.sender] = 0;
         (bool ok,) = payable(msg.sender).call{value: balance}("");
-        require(ok, "Withdraw failure");
+        if(!ok) revert WithdrawalFailure();
     }
 
     /**
@@ -238,6 +238,7 @@ contract DomainRegistar is Initializable {
     }
 
     function _getMainStorage() private pure returns (MainStorage storage $) {
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             $.slot := MAIN_STORAGE_LOCATION
         }
@@ -264,7 +265,7 @@ contract DomainRegistar is Initializable {
     }
 
     function _convertUsdcToEth(uint256 usdcPrice) private view returns(uint256) {
-        uint usdcEthRate = _getMainStorage().usdcEthRate;
+        uint256 usdcEthRate = _getMainStorage().usdcEthRate;
         return usdcPrice*usdcEthRate/1000000;
     }
 }
