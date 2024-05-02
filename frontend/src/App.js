@@ -107,7 +107,7 @@ function ContractApp() {
     let tx;
     try {
       if (currency=="ETH") {
-        tx = await contractConn.withdrawEth();
+        tx = await contractConn.withdraw();
       } else {
         tx = await contractConn.withdrawUsdc();
       }

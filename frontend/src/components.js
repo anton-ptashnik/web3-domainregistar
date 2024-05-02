@@ -116,7 +116,7 @@ function RegistrationHistory({ history }) {
                         },
                     },
                     sorting: {
-                        sortModel: [{ field: 'timestamp', sort: 'asc' }],
+                        sortModel: [{ field: 'timestamp', sort: 'desc' }],
                     },
                     pagination: {
                         paginationModel: { page: 0, pageSize: 5 },

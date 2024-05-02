@@ -8,7 +8,7 @@
     "installDeps": "bash ./installDeps.sh",
     "deployContract": "bash ./deployContract.sh",
     "deployFrontend": "bash ./deployFrontend.sh",
-    "deployBackend": "bash ./deployFrontend.sh"
+    "deployBackend": "bash ./deployBackend.sh"
   },
   "author": "me",
   "license": "ISC",

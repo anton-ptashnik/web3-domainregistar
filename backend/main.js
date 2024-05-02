@@ -14,11 +14,12 @@ for (let i=0; i<WALLETS_COUNT; i++) {
         null,
         `m/44'/60'/0'/0/${i}`
     )
-    wallets.set(wallet.address, wallet);
+    wallets.set(wallet.address.toLowerCase(), wallet);
 }
 
 app.post('/withdraw/:account', async (req, res) => {
-  const { account } = req.params;
+  let { account } = req.params;
+  account = account.toLowerCase();
   const availableCurrencies = ["eth", "usdc"];
   const requestedCurrency = req.query.currency || "";
   if (!wallets.has(account) || !availableCurrencies.includes(requestedCurrency.toLowerCase())) {
