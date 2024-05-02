@@ -8,7 +8,8 @@
     "installDeps": "bash ./installDeps.sh",
     "deployContract": "bash ./deployContract.sh",
     "deployFrontend": "bash ./deployFrontend.sh",
-    "deployBackend": "bash ./deployBackend.sh"
+    "deployBackend": "bash ./deployBackend.sh",
+    "stylecheck": "solhint contracts/*"
   },
   "author": "me",
   "license": "ISC",
@@ -20,6 +21,7 @@
     "@openzeppelin/hardhat-upgrades": "^3.0.5",
     "ethers": "^6.11.1",
     "hardhat": "^2.22.2",
-    "hardhat-ethernal": "^3.2.5"
+    "hardhat-ethernal": "^3.2.5",
+    "solhint": "^4.5.4"
   }
 }
