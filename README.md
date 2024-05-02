@@ -26,9 +26,9 @@ npm run installDeps
 ```
 Then one can deploy Domain Registar, frontend and backend using dedicated NPM scripts:
 ```shell
-npm run deployContract # run in first terminal window
-npm run deployFrontend # run in another terminal window
-npm run deployBackend # run in another terminal window
+npm run deployContract >& logs/network.log &
+npm run deployFrontend >& logs/frontend.log &
+npm run deployBackend >& logs/backend.log &
 ```
 
 Frontend page should be available at http://localhost:3000, backend at http://localhost:3001 
