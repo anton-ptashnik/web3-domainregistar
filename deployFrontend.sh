@@ -1,4 +1,4 @@
-set -em
+set -e
 
 LOGS_DIR=logs
 mkdir -p $LOGS_DIR

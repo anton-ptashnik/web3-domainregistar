@@ -1,4 +1,4 @@
-set -em
+set -e
 
 LOGS_DIR=logs
 CONTRACT_ADDRESS=`cat $LOGS_DIR/contractAddresses.log | sed -n "s/DOMAINREGISTAR_CONTRACT_ADDRESS=\([^']\+\).*/\1/p"`
