@@ -5,18 +5,23 @@
   "main": "index.js",
   "scripts": {
     "test": "hardhat test test/DomainRegistar.js",
-    "test_v1to2_upgrade": "bash ./test/upgrage_check.sh",
+    "installDeps": "bash ./installDeps.sh",
+    "deployContract": "bash ./deployContract.sh",
+    "deployFrontend": "bash ./deployFrontend.sh",
+    "deployBackend": "bash ./deployBackend.sh",
     "stylecheck": "solhint contracts/*"
   },
   "author": "me",
   "license": "ISC",
   "devDependencies": {
+    "@chainlink/contracts": "^1.1.0",
     "@nomicfoundation/hardhat-ethers": "^3.0.5",
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "@openzeppelin/contracts-upgradeable": "^5.0.2",
     "@openzeppelin/hardhat-upgrades": "^3.0.5",
     "ethers": "^6.11.1",
     "hardhat": "^2.22.2",
+    "hardhat-ethernal": "^3.2.5",
     "solhint": "^4.5.4"
   }
 }

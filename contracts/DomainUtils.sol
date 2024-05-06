@@ -16,7 +16,7 @@ library DomainUtils {
         address payable owner;
 
         /// @notice Price payed for domain registration
-        uint256 weiDomainPrice;
+        uint256 usdcDomainPrice;
 
         /// @notice Domain name
         string domainName;
@@ -54,7 +54,8 @@ library DomainUtils {
     function parseDomainLevels(string calldata domain) internal pure returns (string[] memory levels) {
         strings.slice memory sl = domain.toSlice();
         strings.slice memory delim = ".".toSlice();
-        uint8 n = uint8(sl.count(delim) + 1);
+        uint8 n;
+        if (!sl.empty()) n = uint8(sl.count(delim) + 1);
         levels = new string[](n);
         for(uint256 i = 0; i < n; ++i) {
             levels[n-i-1] = sl.split(delim).toString();
